@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
 import 'package:pagocrypto/src/features/payment_generator/views/home_view.dart';
 import 'package:pagocrypto/src/features/payment_generator/views/settings_view.dart';
+import 'package:pagocrypto/src/features/payment_generator/views/qr_display_view.dart';
 
 /// Defines the application's routes using GoRouter.
 class AppRouter {
@@ -28,6 +29,10 @@ class AppRouter {
           GoRoute(
             path: '/settings',
             builder: (context, state) => const SettingsView(),
+          ),
+          GoRoute(
+            path: '/qr',
+            builder: (context, state) => const QrDisplayView(),
           ),
         ],
       ),

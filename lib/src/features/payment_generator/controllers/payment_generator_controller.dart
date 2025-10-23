@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -39,11 +37,17 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// The URL to monitor the transaction on BscScan.
   String? _bscScanUrl;
 
+  /// The input amount entered by the user.
+  String? _inputAmount;
+
+  /// The calculated final amount to request.
+  double? _finalAmount;
+
   /// An error message for the UI, if any.
   String? _errorMessage;
 
-  /// One-time event to notify the view that settings were saved.
-  bool _showSettingsSavedNotice = false;
+  /// One-time event to notify the view that URL was successfully generated (for navigation).
+  bool _navigateToQr = false;
 
   // --- Public Getters ---
 
@@ -62,11 +66,17 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// The BscScan URL to monitor the receiving address. Null if no URL is generated.
   String? get bscScanUrl => _bscScanUrl;
 
+  /// The input amount entered by the user.
+  String? get inputAmount => _inputAmount;
+
+  /// The calculated final amount to request.
+  double? get finalAmount => _finalAmount;
+
   /// A displayable error message.
   String? get errorMessage => _errorMessage;
 
-  /// One-time event flag for showing a "Settings Saved" notice.
-  bool get showSettingsSavedNotice => _showSettingsSavedNotice;
+  /// One-time event flag for navigating to QR display.
+  bool get navigateToQr => _navigateToQr;
 
   /// Constructor. Immediately starts loading settings.
   PaymentGeneratorController() {
@@ -123,7 +133,6 @@ class PaymentGeneratorController extends ChangeNotifier {
       // --- Update State ---
       _receivingAddress = address;
       _amountMultiplier = multiplier;
-      _showSettingsSavedNotice = true;
     } catch (e) {
       debugPrint("Error saving settings: $e");
       _errorMessage = "Could not save settings.";
@@ -132,12 +141,34 @@ class PaymentGeneratorController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Calculates the final amount to request based on the input amount.
+  /// Returns the calculated amount or null if invalid.
+  double? calculateFinalAmount(String amountString) {
+    final double? amount = double.tryParse(amountString);
+    if (amount == null || amount <= 0) {
+      return null;
+    }
+    if (_amountMultiplier == null) {
+      return null;
+    }
+
+    // 1. Calculate amount_to_request
+    // PDF Example: 14.61 * 1.03 = 15.0483. Result: 15.04.
+    // This implies flooring (truncating) at 2 decimal places, not rounding.
+    final double rawAmount = amount * _amountMultiplier!;
+    final double amountToRequest = (rawAmount * 100).floor() / 100.0;
+    return amountToRequest;
+  }
+
   /// Generates the payment URL based on the user's input amount.
   void generateUrl({required String importo}) {
     // Clear any previous state
     _generatedUrl = null;
     _bscScanUrl = null;
+    _inputAmount = null;
+    _finalAmount = null;
     _errorMessage = null;
+    _navigateToQr = false;
 
     // --- Validation ---
     if (_receivingAddress == null || _amountMultiplier == null) {
@@ -175,6 +206,13 @@ class PaymentGeneratorController extends ChangeNotifier {
     // 4. Create the BscScan monitoring URL
     _bscScanUrl = 'https://bscscan.com/token/$_kTokenAddress?a=$_receivingAddress';
 
+    // 5. Store the input amount and calculated final amount
+    _inputAmount = importo;
+    _finalAmount = amountToRequest;
+
+    // 6. Set the navigation event flag
+    _navigateToQr = true;
+
     notifyListeners();
   }
 
@@ -182,13 +220,15 @@ class PaymentGeneratorController extends ChangeNotifier {
   void clearGeneratedUrl() {
     _generatedUrl = null;
     _bscScanUrl = null;
+    _inputAmount = null;
+    _finalAmount = null;
     _errorMessage = null;
     notifyListeners();
   }
 
-  /// Resets the one-time event flag after the view has consumed it.
-  void onSettingsSavedNoticeShown() {
-    _showSettingsSavedNotice = false;
+  /// Resets the navigation event flag after the view has handled it.
+  void onNavigatedToQr() {
+    _navigateToQr = false;
     // No notifyListeners() here, as per the one-time-event pattern
   }
 }
