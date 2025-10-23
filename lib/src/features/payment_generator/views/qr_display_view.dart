@@ -31,7 +31,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
   /// Handles navigation when URL is cleared
   void _handleUrlCleared() {
     if (_controller.generatedUrl == null && mounted) {
-      context.pop();
+      context.go('/');
     }
   }
 
@@ -45,7 +45,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             context.read<PaymentGeneratorController>().clearGeneratedUrl();
-            context.pop();
+            context.go('/');
           },
         ),
       ),

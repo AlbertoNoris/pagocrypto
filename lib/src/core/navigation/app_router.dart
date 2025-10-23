@@ -71,7 +71,7 @@ class AppRouter {
             ],
           ),
           GoRoute(
-            path: 'settings',
+            path: '/settings',
             builder: (context, state) => const SettingsView(),
           ),
         ],

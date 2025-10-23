@@ -49,6 +49,12 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// One-time event to notify the view that URL was successfully generated (for navigation).
   bool _navigateToQr = false;
 
+  /// One-time event to notify the view to navigate to the monitor route.
+  bool _navigateToMonitor = false;
+
+  /// One-time event message for clipboard feedback.
+  String? _clipboardMessage;
+
   /// Timestamp when the QR code was created (Unix timestamp in seconds).
   int? _qrCreationTimestamp;
 
