@@ -12,12 +12,6 @@ class HomeView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Generate Payment'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => context.go('/settings'),
-          ),
-        ],
       ),
       body: Center(
         child: Padding(
@@ -49,7 +43,7 @@ class HomeView extends StatelessWidget {
         const Text('Please configure your settings first.'),
         const SizedBox(height: 16),
         ElevatedButton(
-          onPressed: () => context.go('/settings'),
+          onPressed: () => context.push('/settings'),
           child: const Text('Go to Settings'),
         ),
       ],

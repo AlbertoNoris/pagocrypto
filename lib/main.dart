@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Crypto QR Generator',
       routerConfig: AppRouter.router,
-      theme: ThemeData.light(useMaterial3: true),
+      theme: ThemeData.dark(useMaterial3: true),
       debugShowCheckedModeBanner: false,
     );
   }

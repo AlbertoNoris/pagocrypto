@@ -26,38 +26,32 @@ class _SettingsViewState extends State<SettingsView> {
     _multiplierController = TextEditingController(
       text: _controller.amountMultiplier?.toString(),
     );
-
-    // Listen for the one-time save event
-    _controller.addListener(_onSettingsSaved);
   }
 
   @override
   void dispose() {
     _addressController.dispose();
     _multiplierController.dispose();
-    _controller.removeListener(_onSettingsSaved);
     super.dispose();
   }
 
-  void _onSettingsSaved() {
-    if (_controller.showSettingsSavedNotice) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Settings Saved!')));
-      // Consume the event
-      _controller.onSettingsSavedNoticeShown();
-      // Pop back to home
-      if (context.canPop()) {
-        context.pop();
-      }
-    }
-  }
-
-  void _save() {
-    _controller.saveSettings(
+  void _save() async {
+    await _controller.saveSettings(
       address: _addressController.text,
       multiplierString: _multiplierController.text,
     );
+
+    // If save was successful (no error message), close the settings view
+    if (_controller.errorMessage == null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Settings Saved!')),
+      );
+      // Brief delay to let snackbar display before popping
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (mounted && context.canPop()) {
+        context.pop();
+      }
+    }
   }
 
   @override
