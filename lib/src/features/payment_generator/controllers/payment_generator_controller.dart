@@ -49,6 +49,9 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// One-time event to notify the view that URL was successfully generated (for navigation).
   bool _navigateToQr = false;
 
+  /// Timestamp when the QR code was created (Unix timestamp in seconds).
+  int? _qrCreationTimestamp;
+
   // --- Public Getters ---
 
   /// Whether the controller is loading initial settings.
@@ -77,6 +80,9 @@ class PaymentGeneratorController extends ChangeNotifier {
 
   /// One-time event flag for navigating to QR display.
   bool get navigateToQr => _navigateToQr;
+
+  /// Timestamp when the QR code was created (Unix timestamp in seconds).
+  int? get qrCreationTimestamp => _qrCreationTimestamp;
 
   /// Constructor. Immediately starts loading settings.
   PaymentGeneratorController() {
@@ -204,13 +210,18 @@ class PaymentGeneratorController extends ChangeNotifier {
         'ethereum:$_kTokenAddress@$_kNetworkId/transfer?address=$_receivingAddress&uint256=${amountUint256.toString()}';
 
     // 4. Create the BscScan monitoring URL
-    _bscScanUrl = 'https://bscscan.com/token/$_kTokenAddress?a=$_receivingAddress';
+    _bscScanUrl =
+        'https://bscscan.com/token/$_kTokenAddress?a=$_receivingAddress';
 
     // 5. Store the input amount and calculated final amount
     _inputAmount = importo;
     _finalAmount = amountToRequest;
 
-    // 6. Set the navigation event flag
+    // 6. Record the QR creation timestamp for payment monitoring
+    _qrCreationTimestamp =
+        DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+
+    // 7. Set the navigation event flag
     _navigateToQr = true;
 
     notifyListeners();
@@ -223,6 +234,13 @@ class PaymentGeneratorController extends ChangeNotifier {
     _inputAmount = null;
     _finalAmount = null;
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Updates the input amount and triggers a rebuild.
+  /// This allows the view to reactively display the final amount.
+  void updateInputAmount(String amount) {
+    _inputAmount = amount;
     notifyListeners();
   }
 

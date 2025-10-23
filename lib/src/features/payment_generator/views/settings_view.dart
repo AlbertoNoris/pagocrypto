@@ -43,9 +43,9 @@ class _SettingsViewState extends State<SettingsView> {
 
     // If save was successful (no error message), close the settings view
     if (_controller.errorMessage == null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Settings Saved!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Settings Saved!')));
       // Brief delay to let snackbar display before popping
       await Future.delayed(const Duration(milliseconds: 300));
       if (mounted && context.canPop()) {

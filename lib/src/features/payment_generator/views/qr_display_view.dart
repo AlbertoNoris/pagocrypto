@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class QrDisplayView extends StatefulWidget {
   const QrDisplayView({super.key});
@@ -14,6 +13,28 @@ class QrDisplayView extends StatefulWidget {
 }
 
 class _QrDisplayViewState extends State<QrDisplayView> {
+  late PaymentGeneratorController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = context.read<PaymentGeneratorController>();
+    _controller.addListener(_handleUrlCleared);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_handleUrlCleared);
+    super.dispose();
+  }
+
+  /// Handles navigation when URL is cleared
+  void _handleUrlCleared() {
+    if (_controller.generatedUrl == null && mounted) {
+      context.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,13 +51,8 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       ),
       body: Consumer<PaymentGeneratorController>(
         builder: (context, controller, child) {
-          // If URL was cleared (e.g., user pressed back), pop the view
+          // Show content if URL exists
           if (controller.generatedUrl == null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (context.canPop()) {
-                context.pop();
-              }
-            });
             return const SizedBox.shrink();
           }
 
@@ -52,10 +68,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.grey[300]!,
-                        width: 1,
-                      ),
+                      border: Border.all(color: Colors.grey[300]!, width: 1),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,13 +108,8 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                   const SizedBox(height: 24),
                   // Check Payment Button
                   ElevatedButton(
-                    onPressed: () async {
-                      final url = controller.bscScanUrl;
-                      if (url != null) {
-                        if (await canLaunchUrl(Uri.parse(url))) {
-                          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                        }
-                      }
+                    onPressed: () {
+                      context.replace('/monitor');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
@@ -113,7 +121,10 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                     ),
                     child: const Text(
                       'Check Payment',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -132,10 +143,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.grey[300]!,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey[300]!, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,7 +178,8 @@ class _QrDisplayViewState extends State<QrDisplayView> {
   }
 
   Widget _buildFinalAmountDisplay(PaymentGeneratorController controller) {
-    final finalAmountText = controller.finalAmount?.toStringAsFixed(2) ?? '0.00';
+    final finalAmountText =
+        controller.finalAmount?.toStringAsFixed(2) ?? '0.00';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -208,10 +217,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.grey[300]!,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey[300]!, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

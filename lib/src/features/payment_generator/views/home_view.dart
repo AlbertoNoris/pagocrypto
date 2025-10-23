@@ -12,6 +12,7 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   late TextEditingController _amountController;
+  late PaymentGeneratorController _controller;
 
   @override
   void initState() {
@@ -19,14 +20,13 @@ class _HomeViewState extends State<HomeView> {
     _amountController = TextEditingController();
 
     // Listen for navigation events
-    final controller = context.read<PaymentGeneratorController>();
-    controller.addListener(_handleNavigationEvent);
+    _controller = context.read<PaymentGeneratorController>();
+    _controller.addListener(_handleNavigationEvent);
   }
 
   @override
   void dispose() {
-    final controller = context.read<PaymentGeneratorController>();
-    controller.removeListener(_handleNavigationEvent);
+    _controller.removeListener(_handleNavigationEvent);
     _amountController.dispose();
     super.dispose();
   }
@@ -125,9 +125,11 @@ class _HomeViewState extends State<HomeView> {
                       children: [
                         TextField(
                           controller: _amountController,
-                          onChanged: (_) {
-                            // Rebuild the parent to update finalAmount display
-                            setState(() {});
+                          onChanged: (value) {
+                            // Update controller state to trigger reactive rebuild
+                            context
+                                .read<PaymentGeneratorController>()
+                                .updateInputAmount(value);
                           },
                           decoration: InputDecoration(
                             hintText: 'e.g., 14.61',
