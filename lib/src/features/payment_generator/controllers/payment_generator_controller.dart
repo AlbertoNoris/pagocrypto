@@ -50,9 +50,6 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// One-time event to notify the view that URL was successfully generated (for navigation).
   bool _navigateToQr = false;
 
-  /// One-time event to notify the view to navigate to the monitor route.
-  bool _navigateToMonitor = false;
-
   /// One-time event message for clipboard feedback.
   String? _clipboardMessage;
 
@@ -87,9 +84,6 @@ class PaymentGeneratorController extends ChangeNotifier {
 
   /// One-time event flag for navigating to QR display.
   bool get navigateToQr => _navigateToQr;
-
-  /// One-time event flag for navigating to monitor route.
-  bool get navigateToMonitor => _navigateToMonitor;
 
   /// One-time event message for clipboard feedback.
   String? get clipboardMessage => _clipboardMessage;
@@ -263,18 +257,6 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// Resets the navigation event flag after the view has handled it.
   void onNavigatedToQr() {
     _navigateToQr = false;
-    // No notifyListeners() here, as per the one-time-event pattern
-  }
-
-  /// Requests navigation to the monitor route.
-  void requestMonitorNavigation() {
-    _navigateToMonitor = true;
-    notifyListeners();
-  }
-
-  /// Resets the monitor navigation event flag after the view has handled it.
-  void onNavigatedToMonitor() {
-    _navigateToMonitor = false;
     // No notifyListeners() here, as per the one-time-event pattern
   }
 

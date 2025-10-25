@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:pagocrypto/src/core/services/etherscan_service.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
+import 'package:pagocrypto/src/features/payment_generator/controllers/payment_monitor_controller.dart';
 
 class QrDisplayView extends StatefulWidget {
   const QrDisplayView({super.key});
@@ -12,43 +14,61 @@ class QrDisplayView extends StatefulWidget {
 }
 
 class _QrDisplayViewState extends State<QrDisplayView> {
-  late PaymentGeneratorController _controller;
+  late PaymentGeneratorController _generatorController;
+  late PaymentMonitorController _monitorController;
+  bool _monitoringInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = context.read<PaymentGeneratorController>();
-    _controller.addListener(_handleEvents);
+    _generatorController = context.read<PaymentGeneratorController>();
+    _generatorController.addListener(_handleGeneratorEvents);
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_handleEvents);
+    _generatorController.removeListener(_handleGeneratorEvents);
+    _monitorController.stopMonitoring();
     super.dispose();
   }
 
-  /// Handles all one-time events from the controller
-  void _handleEvents() {
+  /// Initializes the monitoring controller and starts monitoring
+  void _initializeMonitoring(PaymentGeneratorController generator) {
+    if (_monitoringInitialized) return;
+
+    // Validate required data exists before proceeding
+    if (generator.finalAmount == null ||
+        generator.qrCreationTimestamp == null ||
+        generator.receivingAddress == null) {
+      return;
+    }
+
+    _monitorController = PaymentMonitorController(
+      amountRequested: generator.finalAmount!,
+      qrCreationTimestamp: generator.qrCreationTimestamp!,
+      receivingAddress: generator.receivingAddress!,
+      etherscanService: EtherscanService(),
+    );
+    _monitorController.startMonitoring();
+    _monitoringInitialized = true;
+  }
+
+  /// Handles all one-time events from the generator controller
+  void _handleGeneratorEvents() {
     // Handle URL cleared event - navigate back to home
-    if (_controller.generatedUrl == null && mounted) {
+    if (_generatorController.generatedUrl == null && mounted) {
       context.go('/');
     }
 
-    // Handle navigation to monitor route
-    if (_controller.navigateToMonitor && mounted) {
-      context.replace('/monitor');
-      _controller.onNavigatedToMonitor();
-    }
-
     // Handle clipboard message feedback
-    if (_controller.clipboardMessage != null && mounted) {
+    if (_generatorController.clipboardMessage != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_controller.clipboardMessage!),
+          content: Text(_generatorController.clipboardMessage!),
           duration: const Duration(seconds: 2),
         ),
       );
-      _controller.onClipboardMessageShown();
+      _generatorController.onClipboardMessageShown();
     }
   }
 
@@ -64,11 +84,14 @@ class _QrDisplayViewState extends State<QrDisplayView> {
         ),
       ),
       body: Consumer<PaymentGeneratorController>(
-        builder: (context, controller, child) {
+        builder: (context, generatorController, child) {
           // Show content if URL exists
-          if (controller.generatedUrl == null) {
+          if (generatorController.generatedUrl == null) {
             return const SizedBox.shrink();
           }
+
+          // Initialize monitoring on first render when URL is available
+          _initializeMonitoring(generatorController);
 
           return SingleChildScrollView(
             child: Padding(
@@ -89,7 +112,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                               color: Colors.transparent,
                               padding: const EdgeInsets.all(16),
                               child: QrImageView(
-                                data: controller.generatedUrl!,
+                                data: generatorController.generatedUrl!,
                                 version: QrVersions.auto,
                                 size: 250.0,
                                 backgroundColor: const Color(0xFFECD354),
@@ -116,36 +139,18 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Final Amount Display (Large)
-                  _buildFinalAmountDisplay(controller),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      context
-                          .read<PaymentGeneratorController>()
-                          .requestMonitorNavigation();
-                    },
-                    child: const Text(
-                      'Check Payment',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-
+                  // Final Amount Display
+                  _buildFinalAmountDisplay(generatorController),
                   const SizedBox(height: 24),
 
-                  // Payment Details Card
-                  // _buildPaymentDetailsCard(controller),
-                  const SizedBox(height: 24),
-
-                  // Monitoring URL Card
-                  // _buildMonitoringUrlCard(controller),
-                  const SizedBox(height: 24),
-
-                  // Check Payment Button
-                  const SizedBox(height: 32),
+                  // Payment Monitoring Section
+                  if (_monitoringInitialized)
+                    ChangeNotifierProvider.value(
+                      value: _monitorController,
+                      child: _buildMonitoringSection(),
+                    )
+                  else
+                    const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -155,38 +160,135 @@ class _QrDisplayViewState extends State<QrDisplayView> {
     );
   }
 
-  Widget _buildPaymentDetailsCard(PaymentGeneratorController controller) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildMonitoringSection() {
+    return Consumer<PaymentMonitorController>(
+      builder: (context, monitorController, child) {
+        return Column(
           children: [
+            _buildStatusHeader(monitorController),
+            const SizedBox(height: 24),
+            if (monitorController.receivedTransactions.isNotEmpty)
+              _buildTransactionList(monitorController)
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24.0),
+                child: Text(
+                  'No incoming transactions detected yet.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusHeader(PaymentMonitorController controller) {
+    final style = Theme.of(context).textTheme;
+    String statusText;
+    IconData statusIcon;
+
+    switch (controller.status) {
+      case PaymentStatus.monitoring:
+        statusText = 'Waiting for payment...';
+        statusIcon = Icons.hourglass_empty;
+        break;
+      case PaymentStatus.partiallyPaid:
+        statusText = 'Partial payment received!';
+        statusIcon = Icons.downloading;
+        break;
+      case PaymentStatus.completed:
+        statusText = 'Payment Completed!';
+        statusIcon = Icons.check_circle;
+        break;
+      case PaymentStatus.error:
+        statusText = controller.errorMessage ?? 'Error checking status.';
+        statusIcon = Icons.error_outline;
+        break;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondary,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(statusIcon, color: Colors.white, size: 28),
+                const SizedBox(width: 12),
+                Text(
+                  statusText,
+                  style: style.titleLarge?.copyWith(color: Colors.white),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text.rich(
+              TextSpan(
+                text: 'Amount Left: ',
+                style: style.titleMedium?.copyWith(color: Colors.white),
+                children: [
+                  TextSpan(
+                    text: '${controller.amountLeft.toStringAsFixed(2)} EURI',
+                    style: style.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
             Text(
-              'Payment Details',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              'Total Requested: ${controller.amountRequested.toStringAsFixed(2)} EURI',
+              style: style.bodyMedium?.copyWith(color: Colors.white),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            _buildInfoRow(
-              label: 'Receiving Address',
-              value: controller.receivingAddress ?? 'Not set',
-              isAddress: true,
-            ),
-            const SizedBox(height: 16),
-            _buildInfoRow(
-              label: 'Amount Multiplier',
-              value: controller.amountMultiplier?.toString() ?? 'Not set',
-            ),
-            const SizedBox(height: 16),
-            _buildInfoRow(
-              label: 'Amount',
-              value: controller.inputAmount ?? 'Not set',
+            Text(
+              'Total Received: ${controller.amountReceived.toStringAsFixed(2)} EURI',
+              style: style.bodyMedium?.copyWith(color: Colors.white),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTransactionList(PaymentMonitorController controller) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Received Transactions',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const Divider(),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: controller.receivedTransactions.length,
+          itemBuilder: (context, index) {
+            final tx = controller.receivedTransactions[index];
+            return ListTile(
+              title: Text('${tx.amount} EURI'),
+              subtitle: Text(
+                'From: ${tx.from}',
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: const Icon(Icons.check_box, color: Colors.green),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -221,63 +323,4 @@ class _QrDisplayViewState extends State<QrDisplayView> {
     );
   }
 
-  Widget _buildMonitoringUrlCard(PaymentGeneratorController controller) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Monitoring URL',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () {
-                context
-                    .read<PaymentGeneratorController>()
-                    .copyMonitoringUrlToClipboard();
-              },
-              child: SelectableText(
-                controller.bscScanUrl ?? 'Not available',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontFamily: 'Courier',
-                  color: Colors.grey[600],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow({
-    required String label,
-    required String value,
-    bool isAddress = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: Colors.grey[600]),
-        ),
-        const SizedBox(height: 6),
-        SelectableText(
-          value,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-      ],
-    );
-  }
 }

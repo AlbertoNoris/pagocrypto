@@ -1,14 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:pagocrypto/src/core/services/etherscan_service.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
-import 'package:pagocrypto/src/features/payment_generator/controllers/payment_monitor_controller.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/passcode_controller.dart';
 import 'package:pagocrypto/src/features/payment_generator/views/home_view.dart';
 import 'package:pagocrypto/src/features/payment_generator/views/settings_view.dart';
 import 'package:pagocrypto/src/features/payment_generator/views/qr_display_view.dart';
-import 'package:pagocrypto/src/features/payment_generator/views/monitor_view.dart';
 import 'package:pagocrypto/src/features/payment_generator/views/passcode_view.dart';
 
 /// Defines the application's routes using GoRouter.
@@ -35,40 +31,6 @@ class AppRouter {
               GoRoute(
                 path: 'qr',
                 builder: (context, state) => const QrDisplayView(),
-              ),
-              GoRoute(
-                path: 'monitor',
-                builder: (context, state) {
-                  // 1. Read the *existing* PaymentGeneratorController
-                  final generator = context.read<PaymentGeneratorController>();
-
-                  // 2. Validate required data exists before proceeding
-                  if (generator.finalAmount == null ||
-                      generator.qrCreationTimestamp == null ||
-                      generator.receivingAddress == null) {
-                    return Scaffold(
-                      appBar: AppBar(automaticallyImplyLeading: true),
-                      body: Center(
-                        child: Text(
-                          'Missing payment data. Please generate a payment first.',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    );
-                  }
-
-                  // 3. Create and provide the *new* PaymentMonitorController
-                  return ChangeNotifierProvider(
-                    create: (_) => PaymentMonitorController(
-                      // 4. Pass the data (the "hand-off") - now safe to use !
-                      amountRequested: generator.finalAmount!,
-                      qrCreationTimestamp: generator.qrCreationTimestamp!,
-                      receivingAddress: generator.receivingAddress!,
-                      etherscanService: EtherscanService(),
-                    ),
-                    child: const MonitorView(),
-                  );
-                },
               ),
             ],
           ),
