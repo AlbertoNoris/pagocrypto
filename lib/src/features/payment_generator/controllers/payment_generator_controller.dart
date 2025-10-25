@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Controller to manage payment QR code generation state and logic.
@@ -86,6 +87,15 @@ class PaymentGeneratorController extends ChangeNotifier {
 
   /// One-time event flag for navigating to QR display.
   bool get navigateToQr => _navigateToQr;
+
+  /// One-time event flag for navigating to monitor route.
+  bool get navigateToMonitor => _navigateToMonitor;
+
+  /// One-time event message for clipboard feedback.
+  String? get clipboardMessage => _clipboardMessage;
+
+  /// Formatted final amount for display.
+  String get finalAmountFormatted => _finalAmount?.toStringAsFixed(2) ?? '0.00';
 
   /// Timestamp when the QR code was created (Unix timestamp in seconds).
   int? get qrCreationTimestamp => _qrCreationTimestamp;
@@ -254,5 +264,31 @@ class PaymentGeneratorController extends ChangeNotifier {
   void onNavigatedToQr() {
     _navigateToQr = false;
     // No notifyListeners() here, as per the one-time-event pattern
+  }
+
+  /// Requests navigation to the monitor route.
+  void requestMonitorNavigation() {
+    _navigateToMonitor = true;
+    notifyListeners();
+  }
+
+  /// Resets the monitor navigation event flag after the view has handled it.
+  void onNavigatedToMonitor() {
+    _navigateToMonitor = false;
+    // No notifyListeners() here, as per the one-time-event pattern
+  }
+
+  /// Copies the monitoring URL to clipboard and sets a feedback message.
+  Future<void> copyMonitoringUrlToClipboard() async {
+    if (_bscScanUrl != null) {
+      await Clipboard.setData(ClipboardData(text: _bscScanUrl!));
+      _clipboardMessage = 'Monitoring URL copied to clipboard';
+      notifyListeners();
+    }
+  }
+
+  /// Resets the clipboard message after the view has displayed it.
+  void onClipboardMessageShown() {
+    _clipboardMessage = null;
   }
 }

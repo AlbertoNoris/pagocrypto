@@ -57,7 +57,19 @@ class _SettingsViewState extends State<SettingsView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        title: const Text('Settings'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -67,7 +79,6 @@ class _SettingsViewState extends State<SettingsView> {
               controller: _addressController,
               decoration: const InputDecoration(
                 labelText: 'Receiving Address (0x...)',
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
@@ -75,7 +86,6 @@ class _SettingsViewState extends State<SettingsView> {
               controller: _multiplierController,
               decoration: const InputDecoration(
                 labelText: 'Amount Multiplier (e.g., 1.03)',
-                border: OutlineInputBorder(),
               ),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
@@ -88,10 +98,18 @@ class _SettingsViewState extends State<SettingsView> {
                 if (controller.errorMessage != null) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Text(
-                      controller.errorMessage!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF6B6B),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        controller.errorMessage!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   );
@@ -99,13 +117,7 @@ class _SettingsViewState extends State<SettingsView> {
                 return const SizedBox.shrink();
               },
             ),
-            ElevatedButton(
-              onPressed: _save,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: const Text('Save'),
-            ),
+            ElevatedButton(onPressed: _save, child: const Text('Save')),
           ],
         ),
       ),

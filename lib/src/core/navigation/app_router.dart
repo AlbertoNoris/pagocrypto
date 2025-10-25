@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:pagocrypto/src/core/services/etherscan_service.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_monitor_controller.dart';
+import 'package:pagocrypto/src/features/payment_generator/controllers/passcode_controller.dart';
 import 'package:pagocrypto/src/features/payment_generator/views/home_view.dart';
 import 'package:pagocrypto/src/features/payment_generator/views/settings_view.dart';
 import 'package:pagocrypto/src/features/payment_generator/views/qr_display_view.dart';
 import 'package:pagocrypto/src/features/payment_generator/views/monitor_view.dart';
+import 'package:pagocrypto/src/features/payment_generator/views/passcode_view.dart';
 
 /// Defines the application's routes using GoRouter.
 class AppRouter {
@@ -69,6 +71,13 @@ class AppRouter {
                 },
               ),
             ],
+          ),
+          GoRoute(
+            path: '/passcode',
+            builder: (context, state) => ChangeNotifierProvider(
+              create: (_) => PasscodeController(),
+              child: const PasscodeView(),
+            ),
           ),
           GoRoute(
             path: '/settings',

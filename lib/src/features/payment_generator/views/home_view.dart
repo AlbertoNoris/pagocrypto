@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
@@ -44,12 +45,16 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Generate Payment'),
+        leading: SizedBox(width: 48), // Placeholder for centering the logo
+        title: SizedBox(
+          height: 200,
+          child: SvgPicture.asset('assets/name.svg', fit: BoxFit.contain),
+        ),
         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () => context.push('/settings'),
+            onPressed: () => context.push('/passcode'),
           ),
         ],
       ),
@@ -75,7 +80,7 @@ class _HomeViewState extends State<HomeView> {
           const Text('Please configure your settings first.'),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () => context.push('/settings'),
+            onPressed: () => context.push('/passcode'),
             child: const Text('Go to Settings'),
           ),
         ],
@@ -94,21 +99,21 @@ class _HomeViewState extends State<HomeView> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Settings Info Card
-            _buildCard(
-              title: 'Payment Settings',
-              children: [
-                _buildInfoRow(
-                  label: 'Receiving Address',
-                  value: controller.receivingAddress ?? 'Not set',
-                  isAddress: true,
-                ),
-                const SizedBox(height: 16),
-                _buildInfoRow(
-                  label: 'Amount Multiplier',
-                  value: controller.amountMultiplier?.toString() ?? 'Not set',
-                ),
-              ],
-            ),
+            //_buildCard(
+            //  title: 'Payment Settings',
+            //  children: [
+            //    _buildInfoRow(
+            //      label: 'Receiving Address',
+            //      value: controller.receivingAddress ?? 'Not set',
+            //      isAddress: true,
+            //    ),
+            //    const SizedBox(height: 16),
+            //    _buildInfoRow(
+            //      label: 'Amount Multiplier',
+            //      value: controller.amountMultiplier?.toString() ?? 'Not set',
+            //    ),
+            //  ],
+            //),
             const SizedBox(height: 24),
             // Amount Input Card with Real-time Final Amount Display
             Consumer<PaymentGeneratorController>(
@@ -131,30 +136,7 @@ class _HomeViewState extends State<HomeView> {
                                 .read<PaymentGeneratorController>()
                                 .updateInputAmount(value);
                           },
-                          decoration: InputDecoration(
-                            hintText: 'e.g., 14.61',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                color: Colors.grey,
-                                width: 1,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                color: Colors.grey,
-                                width: 1,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                color: Colors.black,
-                                width: 2,
-                              ),
-                            ),
-                          ),
+                          decoration: InputDecoration(hintText: 'e.g., 14.61'),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
@@ -162,37 +144,37 @@ class _HomeViewState extends State<HomeView> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    // const SizedBox(height: 24),
                     // Final Amount Display
-                    if (finalAmount != null)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Final Amount to Request',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              finalAmount.toStringAsFixed(2),
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    //if (finalAmount != null)
+                    //  Container(
+                    //    padding: const EdgeInsets.all(16),
+                    //    decoration: BoxDecoration(
+                    //      color: Theme.of(context).colorScheme.secondary,
+                    //      borderRadius: BorderRadius.circular(12),
+                    //    ),
+                    //    child: Column(
+                    //      children: [
+                    //        Text(
+                    //          'Final Amount to Request',
+                    //          style: TextStyle(
+                    //            color: Colors.white.withValues(alpha: 0.9),
+                    //            fontSize: 14,
+                    //            fontWeight: FontWeight.w500,
+                    //          ),
+                    //        ),
+                    //        const SizedBox(height: 8),
+                    //        Text(
+                    //          finalAmount.toStringAsFixed(2),
+                    //          style: const TextStyle(
+                    //            fontSize: 32,
+                    //            fontWeight: FontWeight.bold,
+                    //            color: Colors.white,
+                    //          ),
+                    //        ),
+                    //      ],
+                    //    ),
+                    //  ),
                   ],
                 );
               },
@@ -204,16 +186,15 @@ class _HomeViewState extends State<HomeView> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.error.withValues(alpha: 0.1),
+                    color: const Color(0xFFFF6B6B),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     controller.errorMessage!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                    style: const TextStyle(
+                      color: Colors.white,
                       fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -227,14 +208,6 @@ class _HomeViewState extends State<HomeView> {
                 );
                 // Navigation is now handled by the listener in initState
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
               child: const Text(
                 'Generate QR Code',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -247,16 +220,22 @@ class _HomeViewState extends State<HomeView> {
   }
 
   Widget _buildCard({required String title, required List<Widget> children}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [const SizedBox(height: 16), ...children],
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ...children,
+          ],
+        ),
       ),
     );
   }
@@ -269,22 +248,13 @@ class _HomeViewState extends State<HomeView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: Colors.grey,
-          ),
-        ),
+        Text(label, style: Theme.of(context).textTheme.labelSmall),
         const SizedBox(height: 6),
         SelectableText(
           value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
       ],
     );

@@ -66,32 +66,31 @@ class _MonitorViewState extends State<MonitorView> {
     final style = Theme.of(context).textTheme;
     String statusText;
     IconData statusIcon;
-    Color statusColor;
 
     switch (controller.status) {
       case PaymentStatus.monitoring:
         statusText = 'Waiting for payment...';
         statusIcon = Icons.hourglass_empty;
-        statusColor = Colors.grey;
         break;
       case PaymentStatus.partiallyPaid:
         statusText = 'Partial payment received!';
         statusIcon = Icons.downloading;
-        statusColor = Colors.orange;
         break;
       case PaymentStatus.completed:
         statusText = 'Payment Completed!';
         statusIcon = Icons.check_circle;
-        statusColor = Colors.green;
         break;
       case PaymentStatus.error:
         statusText = controller.errorMessage ?? 'Error checking status.';
         statusIcon = Icons.error_outline;
-        statusColor = Theme.of(context).colorScheme.error;
         break;
     }
 
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondary,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -100,11 +99,11 @@ class _MonitorViewState extends State<MonitorView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(statusIcon, color: statusColor, size: 28),
+                Icon(statusIcon, color: Colors.white, size: 28),
                 const SizedBox(width: 12),
                 Text(
                   statusText,
-                  style: style.titleLarge?.copyWith(color: statusColor),
+                  style: style.titleLarge?.copyWith(color: Colors.white),
                 ),
               ],
             ),
@@ -112,12 +111,13 @@ class _MonitorViewState extends State<MonitorView> {
             Text.rich(
               TextSpan(
                 text: 'Amount Left: ',
-                style: style.titleMedium,
+                style: style.titleMedium?.copyWith(color: Colors.white),
                 children: [
                   TextSpan(
                     text: '${controller.amountLeft.toStringAsFixed(2)} EURI',
                     style: style.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                 ],
@@ -127,12 +127,12 @@ class _MonitorViewState extends State<MonitorView> {
             const SizedBox(height: 16),
             Text(
               'Total Requested: ${controller.amountRequested.toStringAsFixed(2)} EURI',
-              style: style.bodyMedium,
+              style: style.bodyMedium?.copyWith(color: Colors.white),
               textAlign: TextAlign.center,
             ),
             Text(
               'Total Received: ${controller.amountReceived.toStringAsFixed(2)} EURI',
-              style: style.bodyMedium,
+              style: style.bodyMedium?.copyWith(color: Colors.white),
               textAlign: TextAlign.center,
             ),
           ],
