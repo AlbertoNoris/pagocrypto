@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pagocrypto/src/core/config/chain_config.dart';
+import 'package:pagocrypto/src/core/services/etherscan_service.dart';
 
 /// Controller to manage payment QR code generation state and logic.
 ///
@@ -9,17 +11,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// 2. State variables are private (`_variable`).
 /// 3. State is exposed via public getters (`get variable`).
 /// 4. notifyListeners() is called after state modification.
+///
+/// It integrates with EtherscanService to fetch the current block number at
+/// the time of QR generation, enabling block-cursor anchoring for deterministic
+/// payment monitoring.
 class PaymentGeneratorController extends ChangeNotifier {
+  // --- Dependencies ---
+  final EtherscanService _etherscanService;
+  final ChainConfig _chainConfig;
+
   // --- Constants ---
 
   // SharedPreferences keys
   static const String _kAddressKey = 'receivingAddress';
   static const String _kMultiplierKey = 'amountMultiplier';
-
-  // Hardcoded blockchain values from the PDF
-  static const String _kTokenAddress =
-      '0x9d1A7A3191102e9F900Faa10540837ba84dCBAE7';
-  static const String _kNetworkId = '56'; // 56 is the chain ID for BSC
 
   // --- Private State ---
 
@@ -54,7 +59,12 @@ class PaymentGeneratorController extends ChangeNotifier {
   String? _clipboardMessage;
 
   /// Timestamp when the QR code was created (Unix timestamp in seconds).
+  /// Deprecated: Use _qrStartBlock for block-cursor anchoring instead.
   int? _qrCreationTimestamp;
+
+  /// The block number at the time of QR generation (block-cursor anchor).
+  /// Used to monitor payments from this block forward without timestamp filtering.
+  int? _qrStartBlock;
 
   // --- Public Getters ---
 
@@ -94,8 +104,16 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// Timestamp when the QR code was created (Unix timestamp in seconds).
   int? get qrCreationTimestamp => _qrCreationTimestamp;
 
-  /// Constructor. Immediately starts loading settings.
-  PaymentGeneratorController() {
+  /// The block number at the time of QR generation (block-cursor anchor).
+  int? get qrStartBlock => _qrStartBlock;
+
+  /// Constructor. Accepts EtherscanService and ChainConfig dependencies.
+  /// Immediately starts loading settings.
+  PaymentGeneratorController({
+    required EtherscanService etherscanService,
+    required ChainConfig chainConfig,
+  }) : _etherscanService = etherscanService,
+       _chainConfig = chainConfig {
     loadSettings();
   }
 
@@ -177,7 +195,12 @@ class PaymentGeneratorController extends ChangeNotifier {
   }
 
   /// Generates the payment URL based on the user's input amount.
-  void generateUrl({required String importo}) {
+  ///
+  /// This is now async to fetch the current block number from the blockchain.
+  /// The block number is stored as _qrStartBlock for block-cursor anchoring.
+  ///
+  /// Throws an exception if the block fetch fails.
+  Future<void> generateUrl({required String importo}) async {
     // Clear any previous state
     _generatedUrl = null;
     _bscScanUrl = null;
@@ -185,6 +208,7 @@ class PaymentGeneratorController extends ChangeNotifier {
     _finalAmount = null;
     _errorMessage = null;
     _navigateToQr = false;
+    _qrStartBlock = null;
 
     // --- Validation ---
     if (_receivingAddress == null || _amountMultiplier == null) {
@@ -196,6 +220,17 @@ class PaymentGeneratorController extends ChangeNotifier {
     final double? amount = double.tryParse(importo);
     if (amount == null || amount <= 0) {
       _errorMessage = "Please enter a valid amount.";
+      notifyListeners();
+      return;
+    }
+
+    // --- Fetch current block (block-cursor anchor) ---
+    try {
+      _qrStartBlock = await _etherscanService.getCurrentBlock();
+      debugPrint('Captured start block: $_qrStartBlock');
+    } catch (e) {
+      debugPrint('Error fetching current block: $e');
+      _errorMessage = "Failed to fetch current block. Please try again.";
       notifyListeners();
       return;
     }
@@ -216,18 +251,21 @@ class PaymentGeneratorController extends ChangeNotifier {
     final BigInt amountUint256 = amountInCents * multiplierWei;
 
     // 3. Format the QR code content (the "final URL")
+    // Use chain config for token address and chain ID
     _generatedUrl =
-        'ethereum:$_kTokenAddress@$_kNetworkId/transfer?address=$_receivingAddress&uint256=${amountUint256.toString()}';
+        'ethereum:${_chainConfig.tokenAddress}@${_chainConfig.chainId}/transfer?address=$_receivingAddress&uint256=${amountUint256.toString()}';
 
-    // 4. Create the BscScan monitoring URL
+    // 4. Create the block explorer monitoring URL
+    // Construct the base explorer URL from the API base URL
+    final explorerUrl = _chainConfig.apiBaseUrl.replaceFirst('/api', '');
     _bscScanUrl =
-        'https://bscscan.com/token/$_kTokenAddress?a=$_receivingAddress';
+        '$explorerUrl/token/${_chainConfig.tokenAddress}?a=$_receivingAddress';
 
     // 5. Store the input amount and calculated final amount
     _inputAmount = importo;
     _finalAmount = amountToRequest;
 
-    // 6. Record the QR creation timestamp for payment monitoring
+    // 6. Record the QR creation timestamp for backward compatibility
     _qrCreationTimestamp =
         DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
 

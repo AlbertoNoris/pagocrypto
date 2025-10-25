@@ -81,7 +81,10 @@ class _HomeViewState extends State<HomeView> {
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => context.push('/passcode'),
-            child: const Text('Go to Settings'),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: const Text('Go to Settings'),
+            ),
           ),
         ],
       ),
@@ -118,10 +121,6 @@ class _HomeViewState extends State<HomeView> {
             // Amount Input Card with Real-time Final Amount Display
             Consumer<PaymentGeneratorController>(
               builder: (context, controller, child) {
-                final finalAmount = controller.calculateFinalAmount(
-                  _amountController.text,
-                );
-
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -202,8 +201,9 @@ class _HomeViewState extends State<HomeView> {
             const SizedBox(height: 32),
             // Generate Button
             ElevatedButton(
-              onPressed: () {
-                context.read<PaymentGeneratorController>().generateUrl(
+              onPressed: () async {
+                // generateUrl is now async due to block fetching
+                await context.read<PaymentGeneratorController>().generateUrl(
                   importo: _amountController.text,
                 );
                 // Navigation is now handled by the listener in initState
@@ -237,26 +237,6 @@ class _HomeViewState extends State<HomeView> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildInfoRow({
-    required String label,
-    required String value,
-    bool isAddress = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: Theme.of(context).textTheme.labelSmall),
-        const SizedBox(height: 6),
-        SelectableText(
-          value,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-      ],
     );
   }
 }

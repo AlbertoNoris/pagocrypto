@@ -1,4 +1,4 @@
-package com.example.pagocrypto
+package com.thestolenspot.pagocrypto
 
 import io.flutter.embedding.android.FlutterActivity
 

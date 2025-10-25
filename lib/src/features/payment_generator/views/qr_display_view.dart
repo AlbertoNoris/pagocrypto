@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:pagocrypto/src/core/config/chain_config.dart';
 import 'package:pagocrypto/src/core/services/etherscan_service.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_monitor_controller.dart';
@@ -32,22 +33,31 @@ class _QrDisplayViewState extends State<QrDisplayView> {
     super.dispose();
   }
 
-  /// Initializes the monitoring controller and starts monitoring
+  /// Initializes the monitoring controller and starts monitoring.
+  ///
+  /// Uses block-cursor anchoring: monitors from the startBlock forward
+  /// instead of using timestamp filtering.
   void _initializeMonitoring(PaymentGeneratorController generator) {
     if (_monitoringInitialized) return;
 
     // Validate required data exists before proceeding
     if (generator.finalAmount == null ||
-        generator.qrCreationTimestamp == null ||
+        generator.qrStartBlock == null ||
         generator.receivingAddress == null) {
+      debugPrint('Cannot initialize monitoring: missing required data');
+      debugPrint('  finalAmount: ${generator.finalAmount}');
+      debugPrint('  qrStartBlock: ${generator.qrStartBlock}');
+      debugPrint('  receivingAddress: ${generator.receivingAddress}');
       return;
     }
 
+    // Create monitor controller with block-cursor anchor
     _monitorController = PaymentMonitorController(
       amountRequested: generator.finalAmount!,
-      qrCreationTimestamp: generator.qrCreationTimestamp!,
+      startBlock: generator.qrStartBlock!,
       receivingAddress: generator.receivingAddress!,
-      etherscanService: EtherscanService(),
+      etherscanService: context.read<EtherscanService>(),
+      chainConfig: context.read<ChainConfig>(),
     );
     _monitorController.startMonitoring();
     _monitoringInitialized = true;
@@ -191,7 +201,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
 
     switch (controller.status) {
       case PaymentStatus.monitoring:
-        statusText = 'Waiting for payment...';
+        statusText = 'Waiting for payment';
         statusIcon = Icons.hourglass_empty;
         break;
       case PaymentStatus.partiallyPaid:
@@ -322,5 +332,4 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       ),
     );
   }
-
 }

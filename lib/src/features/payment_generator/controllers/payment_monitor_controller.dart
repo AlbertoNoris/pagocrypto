@@ -2,24 +2,26 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:pagocrypto/src/core/config/chain_config.dart';
 import 'package:pagocrypto/src/core/services/etherscan_service.dart';
 import 'package:pagocrypto/src/features/payment_generator/models/received_transaction.dart';
 
+/// Payment status enum for monitoring state.
 enum PaymentStatus { monitoring, partiallyPaid, completed, error }
 
+/// Controller to monitor incoming ERC-20 token payments.
+///
+/// This controller uses block-cursor anchoring to monitor payments from a
+/// specific starting block, eliminating the need for timestamp-based filtering.
+/// It polls the Etherscan API at regular intervals to check for incoming
+/// transactions.
 class PaymentMonitorController extends ChangeNotifier {
   // --- Dependencies & Config ---
   final EtherscanService _etherscanService;
+  final ChainConfig _chainConfig;
   final double amountRequested;
-  final int qrCreationTimestamp;
+  final int startBlock; // Block-cursor anchor (replaces timestamp)
   final String receivingAddress;
-
-  // --- Constants (from PDF and user) ---
-  static const String _apiKey = 'UP1PWX9D5Y4PWRVBQ5WY2Q9SQCN9WC8TVI';
-  static const String _tokenContractAddress =
-      '0x9d1A7A3191102e9F900Faa10540837ba84dCBAE7';
-  static const String _apiBaseUrl = 'https://api.etherscan.io';
-  static const int _chainId = 1; // Ethereum mainnet Chain ID
 
   // --- Private State ---
   PaymentStatus _status = PaymentStatus.monitoring;
@@ -38,12 +40,22 @@ class PaymentMonitorController extends ChangeNotifier {
   List<ReceivedTransaction> get receivedTransactions => _receivedTransactions;
   double get amountLeft => max(0, amountRequested - _amountReceived);
 
+  /// Constructor for block-cursor anchoring payment monitoring.
+  ///
+  /// Parameters:
+  /// - [amountRequested]: Expected amount to receive.
+  /// - [startBlock]: Block number to start monitoring from (block-cursor anchor).
+  /// - [receivingAddress]: Wallet address to monitor.
+  /// - [etherscanService]: Service for API calls.
+  /// - [chainConfig]: Chain configuration for API requests.
   PaymentMonitorController({
     required this.amountRequested,
-    required this.qrCreationTimestamp,
+    required this.startBlock,
     required this.receivingAddress,
     required EtherscanService etherscanService,
-  }) : _etherscanService = etherscanService;
+    required ChainConfig chainConfig,
+  }) : _etherscanService = etherscanService,
+       _chainConfig = chainConfig;
 
   void startMonitoring() {
     debugPrint('PaymentMonitor started. Monitoring for $amountRequested');
@@ -60,6 +72,13 @@ class PaymentMonitorController extends ChangeNotifier {
     _pollingTimer = null;
   }
 
+  /// Checks payment status by querying the blockchain.
+  ///
+  /// This method fetches all token transactions from the startBlock forward,
+  /// filters by the receiving address, and sums the amounts received.
+  /// It does NOT use timestamp filtering—the block number acts as the cursor.
+  ///
+  /// Updates controller state with results and notifies listeners.
   Future<void> _checkPaymentStatus() async {
     // Don't proceed if controller has been disposed
     if (_disposed) {
@@ -67,12 +86,11 @@ class PaymentMonitorController extends ChangeNotifier {
     }
 
     try {
-      final transactions = await _etherscanService.getTokenTransactions(
-        apiBaseUrl: _apiBaseUrl,
+      // Fetch token transactions from the stored start block forward
+      final rawTransactions = await _etherscanService.getTokenTxFromBlock(
         address: receivingAddress,
-        contractAddress: _tokenContractAddress,
-        apiKey: _apiKey,
-        chainId: _chainId,
+        contractAddress: _chainConfig.tokenAddress,
+        startBlock: startBlock,
       );
 
       // Check again after async operation in case dispose was called
@@ -80,12 +98,23 @@ class PaymentMonitorController extends ChangeNotifier {
         return;
       }
 
-      final newTransactions = transactions.where((tx) {
-        return tx.timestamp > qrCreationTimestamp &&
-            tx.to.toLowerCase() == receivingAddress.toLowerCase();
-      }).toList();
+      // Parse raw API responses to ReceivedTransaction objects
+      final parsedTransactions = <ReceivedTransaction>[];
+      for (final raw in rawTransactions) {
+        try {
+          parsedTransactions.add(ReceivedTransaction.fromJson(raw));
+        } catch (e) {
+          debugPrint('Error parsing transaction ${raw['hash']}: $e');
+        }
+      }
 
-      final double totalReceived = newTransactions.fold(
+      // Filter by receiving address (confirm the transaction recipient)
+      final inboundTransactions = parsedTransactions
+          .where((tx) => tx.to.toLowerCase() == receivingAddress.toLowerCase())
+          .toList();
+
+      // Sum all received amounts
+      final double totalReceived = inboundTransactions.fold(
         0.0,
         (sum, tx) => sum + tx.amount,
       );
@@ -93,19 +122,23 @@ class PaymentMonitorController extends ChangeNotifier {
       _isLoading = false;
       _errorMessage = null;
       _amountReceived = totalReceived;
-      _receivedTransactions = newTransactions;
+      _receivedTransactions = inboundTransactions;
 
+      // Update status based on received amount
       if (_amountReceived >= amountRequested) {
         _status = PaymentStatus.completed;
-        debugPrint('Payment COMPLETED. Received $_amountReceived');
+        debugPrint('✅ Payment COMPLETED. Received $_amountReceived');
         stopMonitoring();
       } else if (_amountReceived > 0) {
         _status = PaymentStatus.partiallyPaid;
+        debugPrint(
+          '⚠️ Partial payment received: $_amountReceived / $amountRequested',
+        );
       } else {
         _status = PaymentStatus.monitoring;
       }
     } catch (e) {
-      debugPrint('Error checking payment: $e');
+      debugPrint('❌ Error checking payment: $e');
       _errorMessage = 'Failed to check payment status. Retrying...';
       _status = PaymentStatus.error;
     }
