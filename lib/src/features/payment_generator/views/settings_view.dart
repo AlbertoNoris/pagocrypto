@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
@@ -90,6 +91,17 @@ class _SettingsViewState extends State<SettingsView> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                TextInputFormatter.withFunction(
+                  (oldValue, newValue) {
+                    // Replace comma with dot
+                    return newValue.copyWith(
+                      text: newValue.text.replaceAll(',', '.'),
+                    );
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             // Listen for and display errors

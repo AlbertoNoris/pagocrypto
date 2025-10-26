@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -125,7 +126,7 @@ class _HomeViewState extends State<HomeView> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildCard(
-                      title: 'Enter Amount',
+                      title: 'Importo',
                       children: [
                         TextField(
                           controller: _amountController,
@@ -140,6 +141,20 @@ class _HomeViewState extends State<HomeView> {
                             decimal: true,
                           ),
                           style: const TextStyle(fontSize: 18),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9.,]'),
+                            ),
+                            TextInputFormatter.withFunction((
+                              oldValue,
+                              newValue,
+                            ) {
+                              // Replace comma with dot
+                              return newValue.copyWith(
+                                text: newValue.text.replaceAll(',', '.'),
+                              );
+                            }),
+                          ],
                         ),
                       ],
                     ),
@@ -209,7 +224,7 @@ class _HomeViewState extends State<HomeView> {
                 // Navigation is now handled by the listener in initState
               },
               child: const Text(
-                'Generate QR Code',
+                'Genera QR Code',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
