@@ -14,6 +14,7 @@ class SettingsView extends StatefulWidget {
 class _SettingsViewState extends State<SettingsView> {
   late final TextEditingController _addressController;
   late final TextEditingController _multiplierController;
+  late final TextEditingController _deviceIdController;
   late final PaymentGeneratorController _controller;
 
   @override
@@ -25,21 +26,24 @@ class _SettingsViewState extends State<SettingsView> {
       text: _controller.receivingAddress,
     );
     _multiplierController = TextEditingController(
-      text: _controller.amountMultiplier?.toString(),
+      text: _controller.amountMultiplier?.toString().replaceAll('.', ','),
     );
+    _deviceIdController = TextEditingController(text: _controller.deviceId);
   }
 
   @override
   void dispose() {
     _addressController.dispose();
     _multiplierController.dispose();
+    _deviceIdController.dispose();
     super.dispose();
   }
 
   void _save() async {
     await _controller.saveSettings(
       address: _addressController.text,
-      multiplierString: _multiplierController.text,
+      multiplierString: _multiplierController.text.replaceAll(',', '.'),
+      deviceId: _deviceIdController.text,
     );
 
     // If save was successful (no error message), close the settings view
@@ -86,22 +90,27 @@ class _SettingsViewState extends State<SettingsView> {
             TextField(
               controller: _multiplierController,
               decoration: const InputDecoration(
-                labelText: 'Amount Multiplier (e.g., 1.03)',
+                labelText: 'Amount Multiplier (e.g., 1,03)',
               ),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                TextInputFormatter.withFunction(
-                  (oldValue, newValue) {
-                    // Replace comma with dot
-                    return newValue.copyWith(
-                      text: newValue.text.replaceAll(',', '.'),
-                    );
-                  },
-                ),
+                TextInputFormatter.withFunction((oldValue, newValue) {
+                  // Normalize to use commas for display
+                  return newValue.copyWith(
+                    text: newValue.text.replaceAll('.', ','),
+                  );
+                }),
               ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _deviceIdController,
+              decoration: const InputDecoration(
+                labelText: 'Device ID (opzionale)',
+              ),
             ),
             const SizedBox(height: 24),
             // Listen for and display errors

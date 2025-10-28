@@ -139,7 +139,7 @@ class PaymentMonitorController extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('❌ Error checking payment: $e');
-      _errorMessage = 'Failed to check payment status. Retrying...';
+      _errorMessage = '';
       _status = PaymentStatus.error;
     }
 

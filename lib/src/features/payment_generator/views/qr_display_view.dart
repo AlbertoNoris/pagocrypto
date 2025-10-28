@@ -86,7 +86,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Payment QR Code'),
+        //title: const Text('Payment QR Code'),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -109,45 +109,50 @@ class _QrDisplayViewState extends State<QrDisplayView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // QR Code Card
-                  Card(
-                    color: Colors.transparent,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Center(
-                            child: Container(
-                              color: Colors.transparent,
-                              padding: const EdgeInsets.all(16),
-                              child: QrImageView(
-                                data: generatorController.generatedUrl!,
-                                version: QrVersions.auto,
-                                size: 250.0,
-                                backgroundColor: const Color(0xFFECD354),
-                                eyeStyle: const QrEyeStyle(
-                                  eyeShape: QrEyeShape.circle,
-                                  color: Color(0xFF672400),
-                                ),
-                                dataModuleStyle: const QrDataModuleStyle(
-                                  dataModuleShape: QrDataModuleShape.circle,
-                                  color: Color(0xFF672400),
-                                ),
-                                embeddedImage: const AssetImage(
-                                  'assets/icon.png',
-                                ),
-                                embeddedImageStyle: const QrEmbeddedImageStyle(
-                                  size: Size(60, 60),
+                  // QR Code Card - hidden when payment is completed
+                  if (!(_monitoringInitialized &&
+                      _monitorController.status == PaymentStatus.completed))
+                    Card(
+                      color: Colors.transparent,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Center(
+                              child: Container(
+                                color: Colors.transparent,
+                                padding: const EdgeInsets.all(16),
+                                child: QrImageView(
+                                  data: generatorController.generatedUrl!,
+                                  version: QrVersions.auto,
+                                  size: 250.0,
+                                  backgroundColor: const Color(0xFFECD354),
+                                  eyeStyle: const QrEyeStyle(
+                                    eyeShape: QrEyeShape.circle,
+                                    color: Color(0xFF672400),
+                                  ),
+                                  dataModuleStyle: const QrDataModuleStyle(
+                                    dataModuleShape: QrDataModuleShape.circle,
+                                    color: Color(0xFF672400),
+                                  ),
+                                  embeddedImage: const AssetImage(
+                                    'assets/icon.png',
+                                  ),
+                                  embeddedImageStyle:
+                                      const QrEmbeddedImageStyle(
+                                        size: Size(60, 60),
+                                      ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
+                  if (!(_monitoringInitialized &&
+                      _monitorController.status == PaymentStatus.completed))
+                    const SizedBox(height: 24),
 
                   // Final Amount Display
                   _buildFinalAmountDisplay(generatorController),
@@ -180,14 +185,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
             if (monitorController.receivedTransactions.isNotEmpty)
               _buildTransactionList(monitorController)
             else
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24.0),
-                child: Text(
-                  'No incoming transactions detected yet.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
+              SizedBox.shrink(),
           ],
         );
       },
@@ -201,20 +199,20 @@ class _QrDisplayViewState extends State<QrDisplayView> {
 
     switch (controller.status) {
       case PaymentStatus.monitoring:
-        statusText = 'Waiting for payment';
+        statusText = 'In attesa del pagamento';
         statusIcon = Icons.hourglass_empty;
         break;
       case PaymentStatus.partiallyPaid:
-        statusText = 'Partial payment received!';
+        statusText = 'Somma corrisposta solo in parte';
         statusIcon = Icons.downloading;
         break;
       case PaymentStatus.completed:
-        statusText = 'Payment Completed!';
+        statusText = 'Pagamento completato!';
         statusIcon = Icons.check_circle;
         break;
       case PaymentStatus.error:
-        statusText = controller.errorMessage ?? 'Error checking status.';
-        statusIcon = Icons.error_outline;
+        statusText = controller.errorMessage ?? '';
+        statusIcon = Icons.hourglass_empty;
         break;
     }
 
@@ -233,20 +231,23 @@ class _QrDisplayViewState extends State<QrDisplayView> {
               children: [
                 Icon(statusIcon, color: Colors.white, size: 28),
                 const SizedBox(width: 12),
-                Text(
-                  statusText,
-                  style: style.titleLarge?.copyWith(color: Colors.white),
+                RichText(
+                  text: TextSpan(
+                    text: statusText,
+                    style: style.titleLarge?.copyWith(color: Colors.white),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
             Text.rich(
               TextSpan(
-                text: 'Amount Left: ',
+                text: 'Importo dovuto: ',
                 style: style.titleMedium?.copyWith(color: Colors.white),
                 children: [
                   TextSpan(
-                    text: '${controller.amountLeft.toStringAsFixed(2)} EURI',
+                    text:
+                        '${controller.amountLeft.toStringAsFixed(2).replaceAll('.', ',')} EURI',
                     style: style.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -258,12 +259,12 @@ class _QrDisplayViewState extends State<QrDisplayView> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Total Requested: ${controller.amountRequested.toStringAsFixed(2)} EURI',
+              'Totale previsto: ${controller.amountRequested.toStringAsFixed(2).replaceAll('.', ',')} EURI',
               style: style.bodyMedium?.copyWith(color: Colors.white),
               textAlign: TextAlign.center,
             ),
             Text(
-              'Total Received: ${controller.amountReceived.toStringAsFixed(2)} EURI',
+              'Incassato: ${controller.amountReceived.toStringAsFixed(2).replaceAll('.', ',')} EURI',
               style: style.bodyMedium?.copyWith(color: Colors.white),
               textAlign: TextAlign.center,
             ),
@@ -278,7 +279,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Received Transactions',
+          'Cronologia transazioni',
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const Divider(),
@@ -289,7 +290,9 @@ class _QrDisplayViewState extends State<QrDisplayView> {
           itemBuilder: (context, index) {
             final tx = controller.receivedTransactions[index];
             return ListTile(
-              title: Text('${tx.amount} EURI'),
+              title: Text(
+                '${tx.amount.toStringAsFixed(2).replaceAll('.', ',')} EURI',
+              ),
               subtitle: Text(
                 'From: ${tx.from}',
                 overflow: TextOverflow.ellipsis,
@@ -312,7 +315,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       child: Column(
         children: [
           Text(
-            'Final Amount to Request',
+            'Emesso scontrino per',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.9),
               fontSize: 14,
@@ -321,7 +324,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
           ),
           const SizedBox(height: 8),
           Text(
-            controller.finalAmountFormatted,
+            '${controller.finalAmountFormatted} €',
             style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,

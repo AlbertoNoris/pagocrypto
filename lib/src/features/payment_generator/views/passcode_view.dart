@@ -50,7 +50,7 @@ class _PasscodeViewState extends State<PasscodeView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Passcode Required')),
+      appBar: AppBar(title: const Text('Logs Amministratore')),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -58,7 +58,7 @@ class _PasscodeViewState extends State<PasscodeView> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Enter Settings Passcode',
+              'Enter passcode',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),

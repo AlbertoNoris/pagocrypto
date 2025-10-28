@@ -25,6 +25,7 @@ class PaymentGeneratorController extends ChangeNotifier {
   // SharedPreferences keys
   static const String _kAddressKey = 'receivingAddress';
   static const String _kMultiplierKey = 'amountMultiplier';
+  static const String _kDeviceIdKey = 'deviceId';
 
   // --- Private State ---
 
@@ -36,6 +37,9 @@ class PaymentGeneratorController extends ChangeNotifier {
 
   /// The multiplier to apply to the amount (e.g., 1.03).
   double? _amountMultiplier;
+
+  /// The device ID for identification (optional).
+  String? _deviceId;
 
   /// The final generated URL for the QR code.
   String? _generatedUrl;
@@ -77,6 +81,9 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// The user's saved amount multiplier.
   double? get amountMultiplier => _amountMultiplier;
 
+  /// The device ID for identification.
+  String? get deviceId => _deviceId;
+
   /// The generated payment URL. Null if no URL is generated.
   String? get generatedUrl => _generatedUrl;
 
@@ -99,7 +106,8 @@ class PaymentGeneratorController extends ChangeNotifier {
   String? get clipboardMessage => _clipboardMessage;
 
   /// Formatted final amount for display.
-  String get finalAmountFormatted => _finalAmount?.toStringAsFixed(2) ?? '0.00';
+  String get finalAmountFormatted =>
+      (_finalAmount?.toStringAsFixed(2) ?? '0.00').replaceAll('.', ',');
 
   /// Timestamp when the QR code was created (Unix timestamp in seconds).
   int? get qrCreationTimestamp => _qrCreationTimestamp;
@@ -119,7 +127,7 @@ class PaymentGeneratorController extends ChangeNotifier {
 
   // --- Public Methods ---
 
-  /// Loads saved address and multiplier from SharedPreferences.
+  /// Loads saved address, multiplier, and device ID from SharedPreferences.
   Future<void> loadSettings() async {
     _isLoading = true;
     notifyListeners();
@@ -128,6 +136,7 @@ class PaymentGeneratorController extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _receivingAddress = prefs.getString(_kAddressKey);
       _amountMultiplier = prefs.getDouble(_kMultiplierKey);
+      _deviceId = prefs.getString(_kDeviceIdKey);
     } catch (e) {
       // In a real app, you might want more robust error handling
       debugPrint("Error loading settings: $e");
@@ -142,6 +151,7 @@ class PaymentGeneratorController extends ChangeNotifier {
   Future<void> saveSettings({
     required String address,
     required String multiplierString,
+    String? deviceId,
   }) async {
     _errorMessage = null;
 
@@ -163,10 +173,16 @@ class PaymentGeneratorController extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_kAddressKey, address);
       await prefs.setDouble(_kMultiplierKey, multiplier);
+      if (deviceId != null && deviceId.isNotEmpty) {
+        await prefs.setString(_kDeviceIdKey, deviceId);
+      } else {
+        await prefs.remove(_kDeviceIdKey);
+      }
 
       // --- Update State ---
       _receivingAddress = address;
       _amountMultiplier = multiplier;
+      _deviceId = deviceId;
     } catch (e) {
       debugPrint("Error saving settings: $e");
       _errorMessage = "Could not save settings.";
@@ -212,14 +228,17 @@ class PaymentGeneratorController extends ChangeNotifier {
 
     // --- Validation ---
     if (_receivingAddress == null || _amountMultiplier == null) {
-      _errorMessage = "Please configure settings before generating a URL.";
+      _errorMessage =
+          "Per favore configura le impostazioni prima di generare un URL.";
       notifyListeners();
       return;
     }
 
-    final double? amount = double.tryParse(importo);
+    // Parse the amount from comma-separated format (e.g., "1,89" -> 1.89)
+    final String normalizedImporto = importo.replaceAll(',', '.');
+    final double? amount = double.tryParse(normalizedImporto);
     if (amount == null || amount <= 0) {
-      _errorMessage = "Please enter a valid amount.";
+      _errorMessage = "Per favore inserisci un importo valido.";
       notifyListeners();
       return;
     }
