@@ -89,9 +89,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       return const SizedBox(
         width: 280.0,
         height: 280.0,
-        child: Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -135,14 +133,14 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                     Card(
                       color: Colors.transparent,
                       child: Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(8.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Center(
                               child: Container(
                                 color: Colors.transparent,
-                                padding: const EdgeInsets.all(16),
+                                //padding: const EdgeInsets.all(0),
                                 child: _buildQrCodeWidget(generatorController),
                               ),
                             ),

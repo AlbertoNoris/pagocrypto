@@ -17,13 +17,13 @@ class StyledQr extends StatelessWidget {
         child: QrImageView(
           data: data,
           version: QrVersions.auto,
-          size: 280,
+          size: 380,
           // High EC level to tolerate the logo
           errorCorrectionLevel: QrErrorCorrectLevel.Q,
           backgroundColor: Colors.transparent, // keep only container color
           dataModuleStyle: const QrDataModuleStyle(
             // pattern: default
-            dataModuleShape: QrDataModuleShape.square,
+            dataModuleShape: QrDataModuleShape.circle,
             color: Colors.white, // frontcolor
           ),
           eyeStyle: const QrEyeStyle(
@@ -31,7 +31,7 @@ class StyledQr extends StatelessWidget {
             color: Colors.white, // marker_out/in colors
           ),
           embeddedImage: logoImage,
-          embeddedImageStyle: const QrEmbeddedImageStyle(size: Size(64, 64)),
+          embeddedImageStyle: const QrEmbeddedImageStyle(size: Size(110, 110)),
         ),
       ),
     );
