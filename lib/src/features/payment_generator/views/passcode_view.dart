@@ -98,14 +98,14 @@ class _PasscodeViewState extends State<PasscodeView> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF6B6B),
+                        color: const Color(0xFFFFEBEE),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         controller.errorMessage!,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFFC62828),
                           fontWeight: FontWeight.w500,
                         ),
                       ),

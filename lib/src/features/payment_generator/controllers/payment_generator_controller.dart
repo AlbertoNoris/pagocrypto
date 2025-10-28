@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -73,8 +73,11 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// Used to monitor payments from this block forward without timestamp filtering.
   int? _qrStartBlock;
 
-  /// The QR code image data from qr.io API (as base64 or URL).
-  String? _qrCodeImageData;
+  /// The QR code image bytes downloaded from the API.
+  Uint8List? _qrCodeImageBytes;
+
+  /// The QR code image URL from the API (used on web to avoid CORS).
+  String? _qrImageUrl;
 
   /// Loading state for QR code generation from API.
   bool _isGeneratingQrCode = false;
@@ -124,8 +127,11 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// The block number at the time of QR generation (block-cursor anchor).
   int? get qrStartBlock => _qrStartBlock;
 
-  /// The QR code image data from qr.io API.
-  String? get qrCodeImageData => _qrCodeImageData;
+  /// The QR code image bytes from the API.
+  Uint8List? get qrCodeImageBytes => _qrCodeImageBytes;
+
+  /// The QR code image URL from the API (used on web to avoid CORS).
+  String? get qrImageUrl => _qrImageUrl;
 
   /// Whether a QR code is currently being generated from the API.
   bool get isGeneratingQrCode => _isGeneratingQrCode;
@@ -242,7 +248,8 @@ class PaymentGeneratorController extends ChangeNotifier {
     _errorMessage = null;
     _navigateToQr = false;
     _qrStartBlock = null;
-    _qrCodeImageData = null;
+    _qrCodeImageBytes = null;
+    _qrImageUrl = null;
 
     // --- Validation ---
     if (_receivingAddress == null || _amountMultiplier == null) {
@@ -322,7 +329,8 @@ class PaymentGeneratorController extends ChangeNotifier {
     _inputAmount = null;
     _finalAmount = null;
     _errorMessage = null;
-    _qrCodeImageData = null;
+    _qrCodeImageBytes = null;
+    _qrImageUrl = null;
     notifyListeners();
   }
 
@@ -355,38 +363,28 @@ class PaymentGeneratorController extends ChangeNotifier {
 
   /// Generates a QR code using the QR proxy service.
   ///
-  /// Takes the payment URL and creates a styled QR code with the configured
-  /// colors and design options via the Vercel proxy endpoint. The generated
-  /// QR code image data is stored in _qrCodeImageData for display in the view.
+  /// Sends the payment URL to the Vercel proxy endpoint, which applies
+  /// server-side styling defaults (blue/white theme with circle markers and logo).
+  /// The generated QR code image bytes are downloaded and stored in _qrCodeImageBytes.
   Future<void> generateQrCodeFromApi(String paymentUrl) async {
     _isGeneratingQrCode = true;
     notifyListeners();
 
     try {
-      final response = await _qrProxyService.create(
-        data: paymentUrl,
-        qrtype: 'static',
-        backcolor: '#ecd354',
-        frontcolor: '#672300',
-        markerOut: '#672300',
-        markerIn: '#f76a00',
-        pattern: 'default',
-        marker: 'default',
-        markerInShape: 'default',
-      );
+      // Call proxy with only the data field
+      // Server will apply default styling configuration
+      final response = await _qrProxyService.create(data: paymentUrl);
 
-      // Store the QR code image data
-      if (response.bytes != null) {
-        // Convert bytes to base64 data URI for consistent display
-        final String base64Image = base64Encode(response.bytes!);
-        _qrCodeImageData = 'data:image/png;base64,$base64Image';
-        debugPrint('QR code generated successfully from proxy (bytes)');
-      } else if (response.url != null) {
-        _qrCodeImageData = response.url;
-        debugPrint('QR code generated successfully from proxy (URL)');
-      } else {
-        _errorMessage = 'QR proxy returned empty response';
-        debugPrint('Error: QR proxy returned empty response');
+      // Store the URL (always available)
+      _qrImageUrl = response.url;
+
+      // Store the QR code image bytes if available (mobile/desktop)
+      if (response.imageBytes != null) {
+        _qrCodeImageBytes = response.imageBytes;
+        debugPrint('QR code generated and downloaded successfully from proxy');
+      } else if (_qrImageUrl == null) {
+        _errorMessage = 'QR proxy returned no image';
+        debugPrint('Error: QR proxy returned no image');
       }
     } catch (e) {
       debugPrint('Error calling QR proxy: $e');

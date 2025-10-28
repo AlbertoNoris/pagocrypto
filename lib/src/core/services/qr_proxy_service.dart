@@ -1,17 +1,14 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// Response object containing the QR code image data.
-///
-/// Can hold either:
-/// - bytes: decoded PNG data if API returned base64
-/// - url: image URL if API returned a link
 class QrResponse {
-  final Uint8List? bytes;
+  final Uint8List? imageBytes;
   final String? url;
 
-  QrResponse({this.bytes, this.url});
+  QrResponse({this.imageBytes, this.url});
 }
 
 /// Service to generate QR codes via a Vercel proxy endpoint.
@@ -25,51 +22,38 @@ class QrProxyService {
 
   /// Creates a QR code by calling the Vercel proxy endpoint.
   ///
+  /// The proxy server uses default styling configuration:
+  /// - Background: #2a7afb (blue)
+  /// - Foreground: #ffffff (white)
+  /// - Markers: circle with rounded inner
+  /// - Logo: qr_center.png from server assets
+  ///
   /// Parameters:
   /// - data: The content to encode in the QR code (e.g., payment URL)
-  /// - qrtype: Type of QR code (default: 'static')
-  /// - backcolor: Background color (default: '#ecd354')
-  /// - frontcolor: Foreground/data color (default: '#672300')
-  /// - markerOut: Outer marker color (default: '#672300')
-  /// - markerIn: Inner marker color (default: '#f76a00')
-  /// - pattern: QR code pattern style (default: 'default')
-  /// - marker: Marker style (default: 'default')
-  /// - markerInShape: Inner marker shape (default: 'default')
+  /// - customStyle: Optional map to override default server styling
   ///
-  /// Returns a QrResponse containing either image bytes or a URL.
+  /// Returns a QrResponse containing the image bytes downloaded from the URL.
   /// Throws an Exception if the API call fails.
   Future<QrResponse> create({
     required String data,
-    String qrtype = 'static',
-    String backcolor = '#ecd354',
-    String frontcolor = '#672300',
-    String markerOut = '#672300',
-    String markerIn = '#f76a00',
-    String pattern = 'default',
-    String marker = 'default',
-    String markerInShape = 'default',
+    Map<String, dynamic>? customStyle,
   }) async {
+    // Build payload with only the data field
+    // The server will apply its defaults
+    final payload = <String, dynamic>{'data': data};
+
+    // Merge any custom style overrides if provided
+    if (customStyle != null) {
+      payload.addAll(customStyle);
+    }
+
     final res = await http.post(
       Uri.parse(endpoint),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: jsonEncode({
-        'data': data,
-        'qrtype': qrtype,
-        'transparent': 'off',
-        'backcolor': backcolor,
-        'frontcolor': frontcolor,
-        'marker_out_color': markerOut,
-        'marker_in_color': markerIn,
-        'pattern': pattern,
-        'marker': marker,
-        'marker_in': markerInShape,
-        // The proxy injects the logo from server-side assets
-        'no_logo_bg': 'off',
-        'outer_frame': 'none',
-      }),
+      body: jsonEncode(payload),
     );
 
     if (res.statusCode != 200) {
@@ -78,50 +62,26 @@ class QrProxyService {
 
     final Map<String, dynamic> json = jsonDecode(res.body);
 
-    // Handle different response formats from qr.io API
-
-    // 1. Check for direct base64 'qrcode' field
-    final String? qrcode = json['qrcode'] as String?;
-    if (qrcode != null) {
-      final String b64 = qrcode.startsWith('data:')
-          ? qrcode.split(',').last
-          : qrcode;
-      return QrResponse(bytes: base64Decode(b64), url: null);
-    }
-
-    // 2. Check for direct 'url' field
-    final String? url = json['url'] as String?;
-    if (url != null) {
-      return QrResponse(bytes: null, url: url);
-    }
-
-    // 3. Check for format-specific URLs (png, jpg, svg, etc.)
-    // Prefer PNG for better quality
-    final String? pngUrl = json['png'] as String?;
-    if (pngUrl != null) {
-      return QrResponse(bytes: null, url: pngUrl);
-    }
-
-    // Fallback to JPG if PNG not available
+    // Extract the JPG download URL
     final String? jpgUrl = json['jpg'] as String?;
-    if (jpgUrl != null) {
-      return QrResponse(bytes: null, url: jpgUrl);
+    if (jpgUrl == null) {
+      throw Exception('Unexpected QR response format: ${res.body}');
     }
 
-    // 4. Fallback: search for any URL-like string in response
-    String? fallbackUrl;
-    try {
-      fallbackUrl = json.values.firstWhere(
-        (v) => v is String && v.startsWith('http'),
-      ) as String?;
-    } catch (e) {
-      fallbackUrl = null;
+    // Web: return URL only to avoid CORS on fetch()
+    if (kIsWeb) {
+      return QrResponse(imageBytes: null, url: jpgUrl);
     }
 
-    if (fallbackUrl != null) {
-      return QrResponse(bytes: null, url: fallbackUrl);
+    // Mobile/desktop: download bytes
+    final imageRes = await http.get(Uri.parse(jpgUrl));
+    if (imageRes.statusCode != 200) {
+      throw Exception('Failed to download QR image: ${imageRes.statusCode}');
     }
 
-    throw Exception('Unexpected QR response format: ${res.body}');
+    return QrResponse(
+      imageBytes: imageRes.bodyBytes,
+      url: jpgUrl,
+    );
   }
 }

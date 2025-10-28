@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const Color primaryColor = Color(0xFFF76A00);
-  static const Color secondaryColor = Color(0xFF672400);
-  static const Color surfaceColor = Color(0xFFFFFFFF);
-  static const Color onSurfaceColor = Color(0xFF000000);
+  // Blue/white theme based on brand guidelines
+  static const Color primaryColor = Color(0xFF5B8FF9); // CryptoPOS blue
+  static const Color secondaryColor = Color(0xFF5B8FF9); // CryptoPOS blue
+  static const Color surfaceColor = Color(0xFFFFFFFF); // White
+  static const Color onSurfaceColor = Color(0xFF0A1E42); // Dark navy
+  static const Color backgroundColor = Color(0xFFF8F9FA); // Light background
 
   static final ThemeData
   lightTheme = ThemeData.light(useMaterial3: true).copyWith(
@@ -16,17 +18,17 @@ class AppTheme {
       surface: surfaceColor,
       onSurface: onSurfaceColor,
     ),
-    scaffoldBackgroundColor: primaryColor,
+    scaffoldBackgroundColor: backgroundColor,
     textTheme: GoogleFonts.montserratTextTheme(ThemeData.light().textTheme),
     appBarTheme: AppBarTheme(
-      backgroundColor: primaryColor,
+      backgroundColor: surfaceColor,
       elevation: 0,
       titleTextStyle: GoogleFonts.montserrat(
         fontSize: 20,
         fontWeight: FontWeight.w600,
-        color: Colors.white,
+        color: onSurfaceColor,
       ),
-      iconTheme: const IconThemeData(color: secondaryColor),
+      iconTheme: const IconThemeData(color: onSurfaceColor),
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: secondaryColor,
@@ -35,7 +37,7 @@ class AppTheme {
 
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: secondaryColor,
+        backgroundColor: primaryColor,
         foregroundColor: Colors.white,
         textStyle: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -44,10 +46,10 @@ class AppTheme {
     ),
     inputDecorationTheme: InputDecorationTheme(
       labelStyle: GoogleFonts.montserrat(
-        color: Colors.white70,
+        color: onSurfaceColor,
         fontWeight: FontWeight.w500,
       ),
-      hintStyle: GoogleFonts.montserrat(color: Colors.white54),
+      hintStyle: GoogleFonts.montserrat(color: Colors.grey[600]),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
@@ -58,7 +60,7 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: secondaryColor, width: 2),
+        borderSide: const BorderSide(color: primaryColor, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     ),
@@ -71,7 +73,7 @@ class AppTheme {
       ),
     ),
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: secondaryColor,
+      backgroundColor: primaryColor,
       contentTextStyle: GoogleFonts.montserrat(
         color: Colors.white,
         fontWeight: FontWeight.w500,

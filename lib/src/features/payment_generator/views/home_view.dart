@@ -49,7 +49,7 @@ class _HomeViewState extends State<HomeView> {
         leading: SizedBox(width: 48), // Placeholder for centering the logo
         title: SizedBox(
           height: 200,
-          child: SvgPicture.asset('assets/name.svg', fit: BoxFit.contain),
+          child: SvgPicture.asset('assets/name2.svg', fit: BoxFit.contain),
         ),
         elevation: 0,
         actions: [
@@ -248,13 +248,13 @@ class _HomeViewState extends State<HomeView> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B6B),
+                      color: const Color(0xFFFFEBEE),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       controller.errorMessage!,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFFC62828),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),

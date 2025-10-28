@@ -5,6 +5,7 @@ import 'package:pagocrypto/src/core/config/chain_config.dart';
 import 'package:pagocrypto/src/core/services/etherscan_service.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_monitor_controller.dart';
+import 'package:pagocrypto/src/features/payment_generator/widgets/styled_qr.dart';
 
 class QrDisplayView extends StatefulWidget {
   const QrDisplayView({super.key});
@@ -81,74 +82,24 @@ class _QrDisplayViewState extends State<QrDisplayView> {
     }
   }
 
-  /// Builds the QR code widget - shows loading indicator while generating,
-  /// then displays the QR code image from qr.io API.
+  /// Builds the QR code widget using the simplified StyledQr widget
   Widget _buildQrCodeWidget(PaymentGeneratorController controller) {
-    // Show loading indicator while QR code is being generated
-    if (controller.isGeneratingQrCode || controller.qrCodeImageData == null) {
+    // Show loading indicator while URL is being generated
+    if (controller.generatedUrl == null) {
       return const SizedBox(
-        width: 250.0,
-        height: 250.0,
+        width: 280.0,
+        height: 280.0,
         child: Center(
           child: CircularProgressIndicator(),
         ),
       );
     }
 
-    // Display the QR code image from the API
-    // Check if it's a URL or base64 data
-    if (controller.qrCodeImageData!.startsWith('http')) {
-      // It's a URL
-      return Image.network(
-        controller.qrCodeImageData!,
-        width: 250.0,
-        height: 250.0,
-        fit: BoxFit.contain,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return SizedBox(
-            width: 250.0,
-            height: 250.0,
-            child: Center(
-              child: CircularProgressIndicator(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
-                    : null,
-              ),
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: 250.0,
-            height: 250.0,
-            color: const Color(0xFFECD354),
-            child: const Center(
-              child: Icon(Icons.error, size: 48, color: Colors.red),
-            ),
-          );
-        },
-      );
-    } else {
-      // Assume it's base64 data
-      return Image.memory(
-        Uri.parse(controller.qrCodeImageData!).data!.contentAsBytes(),
-        width: 250.0,
-        height: 250.0,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: 250.0,
-            height: 250.0,
-            color: const Color(0xFFECD354),
-            child: const Center(
-              child: Icon(Icons.error, size: 48, color: Colors.red),
-            ),
-          );
-        },
-      );
-    }
+    // Display the QR code using the StyledQr widget
+    return StyledQr(
+      data: controller.generatedUrl!,
+      logoImage: const AssetImage('assets/qr_center2.png'),
+    );
   }
 
   @override
