@@ -61,7 +61,7 @@ class PaymentMonitorController extends ChangeNotifier {
     debugPrint('PaymentMonitor started. Monitoring for $amountRequested');
     _pollingTimer?.cancel();
     _checkPaymentStatus(); // Check immediately
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
       _checkPaymentStatus();
     });
   }

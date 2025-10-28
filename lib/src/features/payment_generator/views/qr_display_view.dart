@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pagocrypto/src/core/config/chain_config.dart';
 import 'package:pagocrypto/src/core/services/etherscan_service.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
@@ -82,6 +81,76 @@ class _QrDisplayViewState extends State<QrDisplayView> {
     }
   }
 
+  /// Builds the QR code widget - shows loading indicator while generating,
+  /// then displays the QR code image from qr.io API.
+  Widget _buildQrCodeWidget(PaymentGeneratorController controller) {
+    // Show loading indicator while QR code is being generated
+    if (controller.isGeneratingQrCode || controller.qrCodeImageData == null) {
+      return const SizedBox(
+        width: 250.0,
+        height: 250.0,
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // Display the QR code image from the API
+    // Check if it's a URL or base64 data
+    if (controller.qrCodeImageData!.startsWith('http')) {
+      // It's a URL
+      return Image.network(
+        controller.qrCodeImageData!,
+        width: 250.0,
+        height: 250.0,
+        fit: BoxFit.contain,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return SizedBox(
+            width: 250.0,
+            height: 250.0,
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: 250.0,
+            height: 250.0,
+            color: const Color(0xFFECD354),
+            child: const Center(
+              child: Icon(Icons.error, size: 48, color: Colors.red),
+            ),
+          );
+        },
+      );
+    } else {
+      // Assume it's base64 data
+      return Image.memory(
+        Uri.parse(controller.qrCodeImageData!).data!.contentAsBytes(),
+        width: 250.0,
+        height: 250.0,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: 250.0,
+            height: 250.0,
+            color: const Color(0xFFECD354),
+            child: const Center(
+              child: Icon(Icons.error, size: 48, color: Colors.red),
+            ),
+          );
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -123,27 +192,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                               child: Container(
                                 color: Colors.transparent,
                                 padding: const EdgeInsets.all(16),
-                                child: QrImageView(
-                                  data: generatorController.generatedUrl!,
-                                  version: QrVersions.auto,
-                                  size: 250.0,
-                                  backgroundColor: const Color(0xFFECD354),
-                                  eyeStyle: const QrEyeStyle(
-                                    eyeShape: QrEyeShape.circle,
-                                    color: Color(0xFF672400),
-                                  ),
-                                  dataModuleStyle: const QrDataModuleStyle(
-                                    dataModuleShape: QrDataModuleShape.circle,
-                                    color: Color(0xFF672400),
-                                  ),
-                                  embeddedImage: const AssetImage(
-                                    'assets/icon.png',
-                                  ),
-                                  embeddedImageStyle:
-                                      const QrEmbeddedImageStyle(
-                                        size: Size(60, 60),
-                                      ),
-                                ),
+                                child: _buildQrCodeWidget(generatorController),
                               ),
                             ),
                           ],

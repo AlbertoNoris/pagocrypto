@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pagocrypto/src/core/config/chain_config.dart';
 import 'package:pagocrypto/src/core/services/etherscan_service.dart';
+import 'package:pagocrypto/src/core/services/qr_proxy_service.dart';
 
 /// Controller to manage payment QR code generation state and logic.
 ///
@@ -19,6 +21,7 @@ class PaymentGeneratorController extends ChangeNotifier {
   // --- Dependencies ---
   final EtherscanService _etherscanService;
   final ChainConfig _chainConfig;
+  final QrProxyService _qrProxyService;
 
   // --- Constants ---
 
@@ -70,6 +73,12 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// Used to monitor payments from this block forward without timestamp filtering.
   int? _qrStartBlock;
 
+  /// The QR code image data from qr.io API (as base64 or URL).
+  String? _qrCodeImageData;
+
+  /// Loading state for QR code generation from API.
+  bool _isGeneratingQrCode = false;
+
   // --- Public Getters ---
 
   /// Whether the controller is loading initial settings.
@@ -115,13 +124,21 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// The block number at the time of QR generation (block-cursor anchor).
   int? get qrStartBlock => _qrStartBlock;
 
-  /// Constructor. Accepts EtherscanService and ChainConfig dependencies.
+  /// The QR code image data from qr.io API.
+  String? get qrCodeImageData => _qrCodeImageData;
+
+  /// Whether a QR code is currently being generated from the API.
+  bool get isGeneratingQrCode => _isGeneratingQrCode;
+
+  /// Constructor. Accepts EtherscanService, ChainConfig, and QrProxyService dependencies.
   /// Immediately starts loading settings.
   PaymentGeneratorController({
     required EtherscanService etherscanService,
     required ChainConfig chainConfig,
+    required QrProxyService qrProxyService,
   }) : _etherscanService = etherscanService,
-       _chainConfig = chainConfig {
+       _chainConfig = chainConfig,
+       _qrProxyService = qrProxyService {
     loadSettings();
   }
 
@@ -225,6 +242,7 @@ class PaymentGeneratorController extends ChangeNotifier {
     _errorMessage = null;
     _navigateToQr = false;
     _qrStartBlock = null;
+    _qrCodeImageData = null;
 
     // --- Validation ---
     if (_receivingAddress == null || _amountMultiplier == null) {
@@ -292,6 +310,9 @@ class PaymentGeneratorController extends ChangeNotifier {
     _navigateToQr = true;
 
     notifyListeners();
+
+    // 8. Generate the styled QR code from qr.io API
+    await generateQrCodeFromApi(_generatedUrl!);
   }
 
   /// Clears the generated URL and error state to return to the input screen.
@@ -301,6 +322,7 @@ class PaymentGeneratorController extends ChangeNotifier {
     _inputAmount = null;
     _finalAmount = null;
     _errorMessage = null;
+    _qrCodeImageData = null;
     notifyListeners();
   }
 
@@ -329,5 +351,49 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// Resets the clipboard message after the view has displayed it.
   void onClipboardMessageShown() {
     _clipboardMessage = null;
+  }
+
+  /// Generates a QR code using the QR proxy service.
+  ///
+  /// Takes the payment URL and creates a styled QR code with the configured
+  /// colors and design options via the Vercel proxy endpoint. The generated
+  /// QR code image data is stored in _qrCodeImageData for display in the view.
+  Future<void> generateQrCodeFromApi(String paymentUrl) async {
+    _isGeneratingQrCode = true;
+    notifyListeners();
+
+    try {
+      final response = await _qrProxyService.create(
+        data: paymentUrl,
+        qrtype: 'static',
+        backcolor: '#ecd354',
+        frontcolor: '#672300',
+        markerOut: '#672300',
+        markerIn: '#f76a00',
+        pattern: 'default',
+        marker: 'default',
+        markerInShape: 'default',
+      );
+
+      // Store the QR code image data
+      if (response.bytes != null) {
+        // Convert bytes to base64 data URI for consistent display
+        final String base64Image = base64Encode(response.bytes!);
+        _qrCodeImageData = 'data:image/png;base64,$base64Image';
+        debugPrint('QR code generated successfully from proxy (bytes)');
+      } else if (response.url != null) {
+        _qrCodeImageData = response.url;
+        debugPrint('QR code generated successfully from proxy (URL)');
+      } else {
+        _errorMessage = 'QR proxy returned empty response';
+        debugPrint('Error: QR proxy returned empty response');
+      }
+    } catch (e) {
+      debugPrint('Error calling QR proxy: $e');
+      _errorMessage = 'Error generating QR code: $e';
+    } finally {
+      _isGeneratingQrCode = false;
+      notifyListeners();
+    }
   }
 }
