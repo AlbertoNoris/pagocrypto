@@ -78,13 +78,13 @@ class _HomeViewState extends State<HomeView> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Please configure your settings first.'),
+          const Text('Perfavore configura le impostazioni prima di procedere.'),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => context.push('/passcode'),
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: const Text('Go to Settings'),
+              child: const Text('Vai alle Impostazioni'),
             ),
           ),
         ],

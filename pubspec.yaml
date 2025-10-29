@@ -1,7 +1,7 @@
 name: pagocrypto
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.0+2
+version: 0.1.0+3
 
 environment:
   sdk: ^3.9.0
@@ -35,6 +35,6 @@ flutter:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/icon2.png"
+  image_path: "assets/icon3.png"
   min_sdk_android: 21
   remove_alpha_ios: true

@@ -17,7 +17,7 @@ class StyledQr extends StatelessWidget {
         child: QrImageView(
           data: data,
           version: QrVersions.auto,
-          size: 380,
+          size: 300,
           // High EC level to tolerate the logo
           errorCorrectionLevel: QrErrorCorrectLevel.Q,
           backgroundColor: Colors.transparent, // keep only container color

@@ -1,15 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart' show kIsWeb;
-
-/// Response object containing the QR code image data.
-class QrResponse {
-  final Uint8List? imageBytes;
-  final String? url;
-
-  QrResponse({this.imageBytes, this.url});
-}
+import 'package:flutter/foundation.dart' show kIsWeb, Uint8List;
 
 /// Service to generate QR codes via a Vercel proxy endpoint.
 ///
@@ -34,11 +25,10 @@ class QrProxyService {
   ///
   /// Returns a QrResponse containing the image bytes downloaded from the URL.
   /// Throws an Exception if the API call fails.
-  Future<QrResponse> create({
+  Future<Uint8List> create({
     required String data,
     Map<String, dynamic>? customStyle,
   }) async {
-    // Build payload with only the data field
     // The server will apply its defaults
     final payload = <String, dynamic>{'data': data};
 
@@ -51,37 +41,17 @@ class QrProxyService {
       Uri.parse(endpoint),
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        'Accept': 'image/jpeg', // We now expect an image back
       },
       body: jsonEncode(payload),
     );
 
     if (res.statusCode != 200) {
+      // Our proxy API *will* return JSON/text on error, so this is correct.
       throw Exception('QR proxy error ${res.statusCode}: ${res.body}');
     }
 
-    final Map<String, dynamic> json = jsonDecode(res.body);
-
-    // Extract the JPG download URL
-    final String? jpgUrl = json['jpg'] as String?;
-    if (jpgUrl == null) {
-      throw Exception('Unexpected QR response format: ${res.body}');
-    }
-
-    // Web: return URL only to avoid CORS on fetch()
-    if (kIsWeb) {
-      return QrResponse(imageBytes: null, url: jpgUrl);
-    }
-
-    // Mobile/desktop: download bytes
-    final imageRes = await http.get(Uri.parse(jpgUrl));
-    if (imageRes.statusCode != 200) {
-      throw Exception('Failed to download QR image: ${imageRes.statusCode}');
-    }
-
-    return QrResponse(
-      imageBytes: imageRes.bodyBytes,
-      url: jpgUrl,
-    );
+    // If status is 200, the body is the image data directly.
+    return res.bodyBytes;
   }
 }

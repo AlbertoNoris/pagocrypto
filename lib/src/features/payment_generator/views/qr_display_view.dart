@@ -85,18 +85,33 @@ class _QrDisplayViewState extends State<QrDisplayView> {
   /// Builds the QR code widget using the simplified StyledQr widget
   Widget _buildQrCodeWidget(PaymentGeneratorController controller) {
     // Show loading indicator while URL is being generated
-    if (controller.generatedUrl == null) {
-      return const SizedBox(
-        width: 280.0,
-        height: 280.0,
-        child: Center(child: CircularProgressIndicator()),
+    if (controller.qrJpgUrl == null) {
+      return Center(
+        child: const SizedBox(
+          width: 280.0,
+          height: 280.0,
+          child: Center(child: CircularProgressIndicator()),
+        ),
       );
     }
 
     // Display the QR code using the StyledQr widget
-    return StyledQr(
-      data: controller.generatedUrl!,
-      logoImage: const AssetImage('assets/qr_center2.png'),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30.0),
+        child: Image.memory(
+          controller.qrJpgUrl!,
+
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return const SizedBox(
+              width: 280.0,
+              height: 280.0,
+              child: Center(child: Text('Errore nel caricamento del QR code')),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -133,18 +148,10 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                     Card(
                       color: Colors.transparent,
                       child: Padding(
-                        padding: const EdgeInsets.all(8.0),
+                        padding: const EdgeInsets.all(18.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Center(
-                              child: Container(
-                                color: Colors.transparent,
-                                //padding: const EdgeInsets.all(0),
-                                child: _buildQrCodeWidget(generatorController),
-                              ),
-                            ),
-                          ],
+                          children: [_buildQrCodeWidget(generatorController)],
                         ),
                       ),
                     ),

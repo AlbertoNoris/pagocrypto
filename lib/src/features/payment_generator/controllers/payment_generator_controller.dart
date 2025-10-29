@@ -77,7 +77,7 @@ class PaymentGeneratorController extends ChangeNotifier {
   Uint8List? _qrCodeImageBytes;
 
   /// The QR code image URL from the API (used on web to avoid CORS).
-  String? _qrImageUrl;
+  Uint8List? _qrJpgUrl;
 
   /// Loading state for QR code generation from API.
   bool _isGeneratingQrCode = false;
@@ -131,7 +131,7 @@ class PaymentGeneratorController extends ChangeNotifier {
   Uint8List? get qrCodeImageBytes => _qrCodeImageBytes;
 
   /// The QR code image URL from the API (used on web to avoid CORS).
-  String? get qrImageUrl => _qrImageUrl;
+  Uint8List? get qrJpgUrl => _qrJpgUrl;
 
   /// Whether a QR code is currently being generated from the API.
   bool get isGeneratingQrCode => _isGeneratingQrCode;
@@ -249,7 +249,7 @@ class PaymentGeneratorController extends ChangeNotifier {
     _navigateToQr = false;
     _qrStartBlock = null;
     _qrCodeImageBytes = null;
-    _qrImageUrl = null;
+    _qrJpgUrl = null;
 
     // --- Validation ---
     if (_receivingAddress == null || _amountMultiplier == null) {
@@ -330,7 +330,7 @@ class PaymentGeneratorController extends ChangeNotifier {
     _finalAmount = null;
     _errorMessage = null;
     _qrCodeImageBytes = null;
-    _qrImageUrl = null;
+    _qrJpgUrl = null;
     notifyListeners();
   }
 
@@ -373,19 +373,7 @@ class PaymentGeneratorController extends ChangeNotifier {
     try {
       // Call proxy with only the data field
       // Server will apply default styling configuration
-      final response = await _qrProxyService.create(data: paymentUrl);
-
-      // Store the URL (always available)
-      _qrImageUrl = response.url;
-
-      // Store the QR code image bytes if available (mobile/desktop)
-      if (response.imageBytes != null) {
-        _qrCodeImageBytes = response.imageBytes;
-        debugPrint('QR code generated and downloaded successfully from proxy');
-      } else if (_qrImageUrl == null) {
-        _errorMessage = 'QR proxy returned no image';
-        debugPrint('Error: QR proxy returned no image');
-      }
+      _qrJpgUrl = await _qrProxyService.create(data: paymentUrl);
     } catch (e) {
       debugPrint('Error calling QR proxy: $e');
       _errorMessage = 'Error generating QR code: $e';
