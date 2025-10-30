@@ -19,11 +19,11 @@ class AppTheme {
       onSurface: onSurfaceColor,
     ),
     scaffoldBackgroundColor: backgroundColor,
-    textTheme: GoogleFonts.montserratTextTheme(ThemeData.light().textTheme),
+    textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
     appBarTheme: AppBarTheme(
       backgroundColor: surfaceColor,
       elevation: 0,
-      titleTextStyle: GoogleFonts.montserrat(
+      titleTextStyle: GoogleFonts.inter(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: onSurfaceColor,
@@ -39,17 +39,17 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
-        textStyle: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600),
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
-      labelStyle: GoogleFonts.montserrat(
+      labelStyle: GoogleFonts.inter(
         color: onSurfaceColor,
         fontWeight: FontWeight.w500,
       ),
-      hintStyle: GoogleFonts.montserrat(color: Colors.grey[600]),
+      hintStyle: GoogleFonts.inter(color: Colors.grey[600]),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
@@ -74,7 +74,7 @@ class AppTheme {
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: primaryColor,
-      contentTextStyle: GoogleFonts.montserrat(
+      contentTextStyle: GoogleFonts.inter(
         color: Colors.white,
         fontWeight: FontWeight.w500,
       ),

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pagocrypto/src/core/config/chain_config.dart';
 import 'package:pagocrypto/src/core/services/etherscan_service.dart';
 import 'package:pagocrypto/src/core/services/qr_proxy_service.dart';
+import 'package:pagocrypto/src/core/utils/amount_utils.dart';
 
 /// Controller to manage payment QR code generation state and logic.
 ///
@@ -225,11 +226,10 @@ class PaymentGeneratorController extends ChangeNotifier {
       return null;
     }
 
-    // 1. Calculate amount_to_request
-    // PDF Example: 14.61 * 1.03 = 15.0483. Result: 15.04.
-    // This implies flooring (truncating) at 2 decimal places, not rounding.
+    // Calculate amount_to_request with floor rounding to 2 decimal places
+    // Example: 14.61 * 1.03 = 15.0483 → 15.04
     final double rawAmount = amount * _amountMultiplier!;
-    final double amountToRequest = (rawAmount * 100).floor() / 100.0;
+    final double amountToRequest = floorToTwoDecimals(rawAmount);
     return amountToRequest;
   }
 
@@ -281,11 +281,10 @@ class PaymentGeneratorController extends ChangeNotifier {
 
     // --- Logic from PDF ---
 
-    // 1. Calculate amount_to_request
-    // PDF Example: 14.61 * 1.03 = 15.0483. Result: 15.04.
-    // This implies flooring (truncating) at 2 decimal places, not rounding.
+    // 1. Calculate amount_to_request with floor rounding to 2 decimal places
+    // Example: 14.61 * 1.03 = 15.0483 → 15.04
     final double rawAmount = amount * _amountMultiplier!;
-    final double amountToRequest = (rawAmount * 100).floor() / 100.0;
+    final double amountToRequest = floorToTwoDecimals(rawAmount);
 
     // 2. Convert to uint256 (wei)
     // We must use BigInt to avoid precision loss.

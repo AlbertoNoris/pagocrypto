@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:pagocrypto/src/core/utils/amount_utils.dart';
 
 /// Immutable data model for a parsed blockchain token transfer transaction.
 ///
@@ -46,7 +47,11 @@ class ReceivedTransaction {
     // Parse the raw value (wei-like) as a BigInt to avoid precision loss
     final BigInt rawValue = BigInt.parse(json['value'] as String);
     final BigInt divisor = BigInt.from(10).pow(decimals);
-    final double normalizedAmount = (rawValue / divisor).toDouble();
+    final double rawAmount = (rawValue / divisor).toDouble();
+
+    // Apply floor rounding to 2 decimal places for payment verification
+    // Example: if sender sends 9.99999, we consider it as 9.99
+    final double normalizedAmount = floorToTwoDecimals(rawAmount);
 
     return ReceivedTransaction(
       hash: json['hash'] as String,
