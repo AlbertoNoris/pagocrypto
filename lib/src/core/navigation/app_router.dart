@@ -17,9 +17,10 @@ import 'package:pagocrypto/src/features/payment_generator/views/passcode_view.da
 /// enabling block-cursor anchoring for payment monitoring.
 class AppRouter {
   /// Chain configuration for BSC (Binance Smart Chain).
-  /// API Key and token address are configured here.
+  /// Proxy URL and token address are configured here.
+  /// The API key is kept secure on the Vercel proxy server.
   static final _chainConfig = ChainConfig.bsc(
-    apiKey: 'UP1PWX9D5Y4PWRVBQ5WY2Q9SQCN9WC8TVI',
+    proxyUrl: 'https://pagocrypto.vercel.app/api/bscscan-proxy',
     tokenAddress: '0x9d1A7A3191102e9F900Faa10540837ba84dCBAE7',
   );
 

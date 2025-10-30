@@ -22,18 +22,22 @@ class EtherscanService {
   EtherscanService({required this.config, http.Client? httpClient})
     : _httpClient = httpClient ?? http.Client();
 
-  /// Builds a V2 API URI with common parameters.
+  /// Calls the proxy endpoint with query parameters.
   ///
-  /// All Etherscan V2 requests require apikey and chainid query parameters.
-  Uri _buildV2Uri(Map<String, String> queryParams) {
-    final allParams = {
-      'apikey': config.apiKey,
-      'chainid': config.chainId.toString(),
-      ...queryParams,
+  /// The proxy server will add the API key server-side for security.
+  Future<http.Response> _callProxy(Map<String, String> queryParams) async {
+    final payload = {
+      'chainId': config.chainId,
+      'queryParams': queryParams,
     };
-    return Uri.parse(
-      '${config.apiBaseUrl}/v2/api',
-    ).replace(queryParameters: allParams);
+
+    return await _httpClient.post(
+      Uri.parse(config.proxyUrl),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(payload),
+    );
   }
 
   /// Fetches the current block number from the blockchain.
@@ -43,12 +47,10 @@ class EtherscanService {
   ///
   /// Throws an exception if the API call fails.
   Future<int> getCurrentBlock() async {
-    final uri = _buildV2Uri({'module': 'proxy', 'action': 'eth_blockNumber'});
-
-    debugPrint('🔍 EtherscanService.getCurrentBlock: $uri');
+    debugPrint('🔍 EtherscanService.getCurrentBlock (via proxy)');
 
     try {
-      final response = await _httpClient.get(uri);
+      final response = await _callProxy({'module': 'proxy', 'action': 'eth_blockNumber'});
 
       if (response.statusCode != 200) {
         throw Exception(
@@ -98,22 +100,20 @@ class EtherscanService {
     int offset = 1000,
     bool asc = true,
   }) async {
-    final uri = _buildV2Uri({
-      'module': 'account',
-      'action': 'tokentx',
-      'contractaddress': contractAddress,
-      'address': address,
-      'startblock': startBlock.toString(),
-      'endblock': '9999999999',
-      'sort': asc ? 'asc' : 'desc',
-      'page': page.toString(),
-      'offset': offset.toString(),
-    });
-
-    debugPrint('🔍 EtherscanService.getTokenTxPage (page $page): $uri');
+    debugPrint('🔍 EtherscanService.getTokenTxPage (page $page, via proxy)');
 
     try {
-      final response = await _httpClient.get(uri);
+      final response = await _callProxy({
+        'module': 'account',
+        'action': 'tokentx',
+        'contractaddress': contractAddress,
+        'address': address,
+        'startblock': startBlock.toString(),
+        'endblock': '9999999999',
+        'sort': asc ? 'asc' : 'desc',
+        'page': page.toString(),
+        'offset': offset.toString(),
+      });
 
       if (response.statusCode != 200) {
         throw Exception('Failed to fetch transactions: ${response.statusCode}');
@@ -223,24 +223,22 @@ class EtherscanService {
     final results = <Map<String, dynamic>>[];
 
     for (int page = 1; page <= maxPages; page++) {
-      final uri = _buildV2Uri({
-        'module': 'logs',
-        'action': 'getLogs',
-        'address': config.tokenAddress,
-        'fromBlock': fromBlock.toString(),
-        'toBlock': toBlock.toString(),
-        'topic0': transferTopic,
-        'topic2': topic2,
-        'page': page.toString(),
-        'offset': offset.toString(),
-      });
-
       debugPrint(
-        '🔍 EtherscanService.getInboundTransferLogs (page $page): $uri',
+        '🔍 EtherscanService.getInboundTransferLogs (page $page, via proxy)',
       );
 
       try {
-        final response = await _httpClient.get(uri);
+        final response = await _callProxy({
+          'module': 'logs',
+          'action': 'getLogs',
+          'address': config.tokenAddress,
+          'fromBlock': fromBlock.toString(),
+          'toBlock': toBlock.toString(),
+          'topic0': transferTopic,
+          'topic2': topic2,
+          'page': page.toString(),
+          'offset': offset.toString(),
+        });
 
         if (response.statusCode != 200) {
           throw Exception('Failed to fetch logs: ${response.statusCode}');

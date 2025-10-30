@@ -299,10 +299,8 @@ class PaymentGeneratorController extends ChangeNotifier {
         'ethereum:${_chainConfig.tokenAddress}@${_chainConfig.chainId}/transfer?address=$_receivingAddress&uint256=${amountUint256.toString()}';
 
     // 4. Create the block explorer monitoring URL
-    // Construct the base explorer URL from the API base URL
-    final explorerUrl = _chainConfig.apiBaseUrl.replaceFirst('/api', '');
     _bscScanUrl =
-        '$explorerUrl/token/${_chainConfig.tokenAddress}?a=$_receivingAddress';
+        '${_chainConfig.explorerUrl}/token/${_chainConfig.tokenAddress}?a=$_receivingAddress';
 
     // 5. Store the input amount and calculated final amount
     _inputAmount = importo;

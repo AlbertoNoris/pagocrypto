@@ -1,17 +1,18 @@
 /// Centralized configuration for blockchain chain properties.
 ///
 /// This class encapsulates all chain-specific settings including network ID,
-/// API endpoints, authentication keys, and token addresses. This ensures
-/// consistency across payment generation and monitoring.
+/// proxy endpoints, and token addresses. The API key is kept secure on the
+/// proxy server side.
 class ChainConfig {
   /// The chain ID used for the Etherscan API (e.g., 56 for BSC, 1 for Ethereum).
   final int chainId;
 
-  /// The base URL for Etherscan API (e.g., https://api.etherscan.io).
-  final String apiBaseUrl;
+  /// The proxy endpoint URL that handles BscScan/Etherscan API calls server-side.
+  /// This keeps the API key secure and not exposed in the client app.
+  final String proxyUrl;
 
-  /// The API key for authentication with Etherscan.
-  final String apiKey;
+  /// The block explorer base URL (e.g., https://bscscan.com, https://etherscan.io).
+  final String explorerUrl;
 
   /// The ERC-20 token contract address on this chain.
   final String tokenAddress;
@@ -21,21 +22,21 @@ class ChainConfig {
 
   ChainConfig({
     required this.chainId,
-    required this.apiBaseUrl,
-    required this.apiKey,
+    required this.proxyUrl,
+    required this.explorerUrl,
     required this.tokenAddress,
     required this.chainName,
   });
 
   /// Factory constructor for Binance Smart Chain (BSC) configuration.
   factory ChainConfig.bsc({
-    required String apiKey,
+    required String proxyUrl,
     required String tokenAddress,
   }) {
     return ChainConfig(
       chainId: 56,
-      apiBaseUrl: 'https://api.etherscan.io',
-      apiKey: apiKey,
+      proxyUrl: proxyUrl,
+      explorerUrl: 'https://bscscan.com',
       tokenAddress: tokenAddress,
       chainName: 'BSC',
     );
@@ -43,13 +44,13 @@ class ChainConfig {
 
   /// Factory constructor for Ethereum mainnet configuration.
   factory ChainConfig.ethereum({
-    required String apiKey,
+    required String proxyUrl,
     required String tokenAddress,
   }) {
     return ChainConfig(
       chainId: 1,
-      apiBaseUrl: 'https://api.etherscan.io',
-      apiKey: apiKey,
+      proxyUrl: proxyUrl,
+      explorerUrl: 'https://etherscan.io',
       tokenAddress: tokenAddress,
       chainName: 'Ethereum',
     );
