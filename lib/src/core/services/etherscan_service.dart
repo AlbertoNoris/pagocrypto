@@ -25,19 +25,46 @@ class EtherscanService {
   /// Calls the proxy endpoint with query parameters.
   ///
   /// The proxy server will add the API key server-side for security.
+  /// Includes retry logic with exponential backoff for throttle errors.
   Future<http.Response> _callProxy(Map<String, String> queryParams) async {
     final payload = {
       'chainId': config.chainId,
       'queryParams': queryParams,
     };
 
-    return await _httpClient.post(
-      Uri.parse(config.proxyUrl),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(payload),
-    );
+    const int maxAttempts = 4; // 1 try + 3 retries
+    int baseDelayMs = 350;
+
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      final res = await _httpClient.post(
+        Uri.parse(config.proxyUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+
+      // Pass through non-200 unless the body shows the known throttle condition.
+      final bodyText = res.body.toLowerCase();
+      final isThrottleHttp = res.statusCode == 429;
+      final isThrottleBody = bodyText.contains('free api access is temporarily unavailable');
+
+      if (!isThrottleHttp && !isThrottleBody) {
+        return res;
+      }
+
+      // Last attempt: return whatever we got.
+      if (attempt == maxAttempts) {
+        return res;
+      }
+
+      // Backoff + jitter
+      final jitter = (100 * attempt);
+      final delay = Duration(milliseconds: baseDelayMs + jitter);
+      await Future.delayed(delay);
+      baseDelayMs *= 2;
+    }
+
+    // Unreachable
+    return http.Response('Retry loop failed unexpectedly', 520);
   }
 
   /// Fetches the current block number from the blockchain.
@@ -49,35 +76,36 @@ class EtherscanService {
   Future<int> getCurrentBlock() async {
     debugPrint('🔍 EtherscanService.getCurrentBlock (via proxy)');
 
-    try {
-      final response = await _callProxy({'module': 'proxy', 'action': 'eth_blockNumber'});
+    final response = await _callProxy({
+      'module': 'proxy',
+      'action': 'eth_blockNumber',
+    });
 
-      if (response.statusCode != 200) {
-        throw Exception(
-          'Failed to fetch current block: ${response.statusCode}',
-        );
-      }
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final result = data['result'];
-
-      if (result == null) {
-        throw Exception('No result in getCurrentBlock response');
-      }
-
-      // Parse hex string to int
-      final hex = result as String;
-      final blockNumber = int.parse(
-        hex.startsWith('0x') ? hex.substring(2) : hex,
-        radix: 16,
-      );
-
-      debugPrint('📦 Current block: $blockNumber');
-      return blockNumber;
-    } catch (e) {
-      debugPrint('❌ Error fetching current block: $e');
-      rethrow;
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch current block: ${response.statusCode}');
     }
+
+    final dynamic data = jsonDecode(response.body);
+
+    // JSON-RPC success shape: { "jsonrpc": "2.0", "id": 1, "result": "0x..." }
+    if (data is Map && data.containsKey('jsonrpc')) {
+      final hex = data['result'] as String? ?? (throw Exception('Missing result'));
+      return int.parse(hex.startsWith('0x') ? hex.substring(2) : hex, radix: 16);
+    }
+
+    // Etherscan OK wrapper shape: { "status":"1","message":"OK","result":"0x..." }
+    if (data is Map && data['status'] == '1' && data['result'] is String) {
+      final hex = data['result'] as String;
+      return int.parse(hex.startsWith('0x') ? hex.substring(2) : hex, radix: 16);
+    }
+
+    // Etherscan error/throttle shape: { "status":"0","message":"NOTOK","result":"Free API access ..." }
+    if (data is Map && data['status'] == '0') {
+      final msg = (data['result'] ?? data['message'] ?? 'Unknown error').toString();
+      throw Exception('Etherscan error: $msg');
+    }
+
+    throw Exception('Unexpected response: ${response.body}');
   }
 
   /// Fetches a page of token transactions for an address.
@@ -151,6 +179,7 @@ class EtherscanService {
   /// - [startBlock]: Block number to start from (block-cursor anchoring).
   /// - [offset]: Results per page (default 1000, max 10000).
   /// - [maxPages]: Maximum number of pages to fetch (default 10).
+  /// - [perPagePause]: Delay between pages to avoid rate limiting (default 300ms).
   ///
   /// Returns all transactions sorted in ascending order by block number.
   Future<List<Map<String, dynamic>>> getTokenTxFromBlock({
@@ -159,6 +188,7 @@ class EtherscanService {
     required int startBlock,
     int offset = 1000,
     int maxPages = 10,
+    Duration perPagePause = const Duration(milliseconds: 300),
   }) async {
     final results = <Map<String, dynamic>>[];
 
@@ -184,6 +214,9 @@ class EtherscanService {
         debugPrint('ℹ️ Last page reached (${batch.length} < $offset)');
         break;
       }
+
+      // Avoid short spikes > 5 rps
+      await Future.delayed(perPagePause);
     }
 
     debugPrint('📊 Retrieved ${results.length} transactions total');

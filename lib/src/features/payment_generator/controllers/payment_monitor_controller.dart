@@ -31,6 +31,8 @@ class PaymentMonitorController extends ChangeNotifier {
   List<ReceivedTransaction> _receivedTransactions = [];
   Timer? _pollingTimer;
   bool _disposed = false;
+  bool _inFlight = false; // Prevent overlapping checks
+  late int _nextFromBlock; // Moving cursor for incremental monitoring
 
   // --- Public Getters ---
   PaymentStatus get status => _status;
@@ -54,16 +56,30 @@ class PaymentMonitorController extends ChangeNotifier {
     required this.receivingAddress,
     required EtherscanService etherscanService,
     required ChainConfig chainConfig,
-  }) : _etherscanService = etherscanService,
-       _chainConfig = chainConfig;
+  })  : _etherscanService = etherscanService,
+        _chainConfig = chainConfig {
+    _nextFromBlock = startBlock;
+  }
 
   void startMonitoring() {
     debugPrint('PaymentMonitor started. Monitoring for $amountRequested');
-    _pollingTimer?.cancel();
-    _checkPaymentStatus(); // Check immediately
-    _pollingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      _checkPaymentStatus();
-    });
+    stopMonitoring();
+
+    void schedule() {
+      final jitterMs = 250 + Random().nextInt(500); // 250–750 ms
+      _pollingTimer = Timer(
+        Duration(seconds: 8) + Duration(milliseconds: jitterMs),
+        () async {
+          await _checkPaymentStatus();
+          if (!_disposed && _status != PaymentStatus.completed) {
+            schedule();
+          }
+        },
+      );
+    }
+
+    _checkPaymentStatus();
+    schedule();
   }
 
   void stopMonitoring() {
@@ -74,31 +90,27 @@ class PaymentMonitorController extends ChangeNotifier {
 
   /// Checks payment status by querying the blockchain.
   ///
-  /// This method fetches all token transactions from the startBlock forward,
-  /// filters by the receiving address, and sums the amounts received.
-  /// It does NOT use timestamp filtering—the block number acts as the cursor.
+  /// This method uses a moving block cursor to fetch only new transactions
+  /// since the last check, avoiding re-downloading historical data.
   ///
   /// Updates controller state with results and notifies listeners.
   Future<void> _checkPaymentStatus() async {
-    // Don't proceed if controller has been disposed
-    if (_disposed) {
-      return;
-    }
+    if (_disposed || _inFlight) return; // No overlap
+    _inFlight = true;
 
     try {
-      // Fetch token transactions from the stored start block forward
       final rawTransactions = await _etherscanService.getTokenTxFromBlock(
         address: receivingAddress,
         contractAddress: _chainConfig.tokenAddress,
-        startBlock: startBlock,
+        startBlock: _nextFromBlock, // Only fetch new items
+        offset: 200, // Smaller page size for monitoring
+        maxPages: 3, // Cap bursts
+        perPagePause: const Duration(milliseconds: 300),
       );
 
-      // Check again after async operation in case dispose was called
-      if (_disposed) {
-        return;
-      }
+      if (_disposed) return;
 
-      // Parse raw API responses to ReceivedTransaction objects
+      // Parse as before
       final parsedTransactions = <ReceivedTransaction>[];
       for (final raw in rawTransactions) {
         try {
@@ -108,42 +120,65 @@ class PaymentMonitorController extends ChangeNotifier {
         }
       }
 
-      // Filter by receiving address (confirm the transaction recipient)
+      // Filter inbound to the receiving address
       final inboundTransactions = parsedTransactions
           .where((tx) => tx.to.toLowerCase() == receivingAddress.toLowerCase())
           .toList();
 
-      // Sum all received amounts
-      final double totalReceived = inboundTransactions.fold(
+      // Sum amounts
+      final double totalReceived = inboundTransactions.fold<double>(
         0.0,
         (sum, tx) => sum + tx.amount,
       );
 
+      // Advance the cursor to the highest seen block + 1
+      if (rawTransactions.isNotEmpty) {
+        final maxBlock = rawTransactions
+            .map((m) => int.parse(m['blockNumber'] as String))
+            .fold<int>(_nextFromBlock, (a, b) => a > b ? a : b);
+        _nextFromBlock = maxBlock + 1;
+      }
+
       _isLoading = false;
       _errorMessage = null;
-      _amountReceived = totalReceived;
-      _receivedTransactions = inboundTransactions;
+      _amountReceived = (_amountReceived + totalReceived);
+      _receivedTransactions.addAll(inboundTransactions);
 
-      // Update status based on received amount
+      // De‑duplicate if needed (optional)
+      // _receivedTransactions = {for (var t in _receivedTransactions) t.hash: t}.values.toList();
+
+      // Status
       if (_amountReceived >= amountRequested) {
         _status = PaymentStatus.completed;
         debugPrint('✅ Payment COMPLETED. Received $_amountReceived');
         stopMonitoring();
       } else if (_amountReceived > 0) {
         _status = PaymentStatus.partiallyPaid;
-        debugPrint(
-          '⚠️ Partial payment received: $_amountReceived / $amountRequested',
-        );
+        debugPrint('⚠️ Partial payment received: $_amountReceived / $amountRequested');
       } else {
         _status = PaymentStatus.monitoring;
       }
     } catch (e) {
-      debugPrint('❌ Error checking payment: $e');
-      _errorMessage = '';
-      _status = PaymentStatus.error;
+      final errorText = e.toString().toLowerCase();
+      final isThrottleError = errorText.contains('temporarily unavailable') ||
+          errorText.contains('rate limit') ||
+          errorText.contains('too many requests');
+
+      if (isThrottleError) {
+        // Throttle errors are transparent to user - retry will handle it
+        debugPrint('⏱️ API throttled, will retry on next poll: $e');
+        _isLoading = false;
+        // Keep current status (monitoring/partiallyPaid), don't show error
+      } else {
+        // Real errors are shown to the user
+        debugPrint('❌ Error checking payment: $e');
+        _errorMessage = e.toString();
+        _status = PaymentStatus.error;
+      }
+    } finally {
+      _inFlight = false;
     }
 
-    // Only notify if not disposed
     if (!_disposed) {
       notifyListeners();
     }
