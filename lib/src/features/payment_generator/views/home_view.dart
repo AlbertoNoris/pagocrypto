@@ -263,18 +263,51 @@ class _HomeViewState extends State<HomeView> {
                 ),
               const SizedBox(height: 32),
               // Generate Button
-              ElevatedButton(
-                onPressed: () async {
-                  // generateUrl is now async due to block fetching
-                  await context.read<PaymentGeneratorController>().generateUrl(
-                    importo: _amountController.text,
+              Consumer<PaymentGeneratorController>(
+                builder: (context, controller, child) {
+                  final isGenerating = controller.isGeneratingQr;
+                  return ElevatedButton(
+                    onPressed: isGenerating
+                        ? null
+                        : () async {
+                            // generateUrl is now async due to block fetching
+                            await context
+                                .read<PaymentGeneratorController>()
+                                .generateUrl(
+                                  importo: _amountController.text,
+                                );
+                            // Navigation is now handled by the listener in initState
+                          },
+                    child: isGenerating
+                        ? const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Generazione in corso...',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          )
+                        : const Text(
+                            'Genera QR Code',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   );
-                  // Navigation is now handled by the listener in initState
                 },
-                child: const Text(
-                  'Genera QR Code',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
               ),
               SizedBox(height: 56),
               // Device ID Display

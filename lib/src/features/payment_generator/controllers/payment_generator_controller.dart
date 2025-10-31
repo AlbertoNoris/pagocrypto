@@ -36,6 +36,9 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// Internal loading state, true while loading from SharedPreferences.
   bool _isLoading = true;
 
+  /// Loading state while generating QR code (fetching block + creating QR).
+  bool _isGeneratingQr = false;
+
   /// The user's receiving wallet address.
   String? _receivingAddress;
 
@@ -80,13 +83,13 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// The QR code image URL from the API (used on web to avoid CORS).
   Uint8List? _qrJpgUrl;
 
-  /// Loading state for QR code generation from API.
-  bool _isGeneratingQrCode = false;
-
   // --- Public Getters ---
 
   /// Whether the controller is loading initial settings.
   bool get isLoading => _isLoading;
+
+  /// Whether the controller is generating the QR code.
+  bool get isGeneratingQr => _isGeneratingQr;
 
   /// The user's saved receiving wallet address.
   String? get receivingAddress => _receivingAddress;
@@ -133,9 +136,6 @@ class PaymentGeneratorController extends ChangeNotifier {
 
   /// The QR code image URL from the API (used on web to avoid CORS).
   Uint8List? get qrJpgUrl => _qrJpgUrl;
-
-  /// Whether a QR code is currently being generated from the API.
-  bool get isGeneratingQrCode => _isGeneratingQrCode;
 
   /// Constructor. Accepts EtherscanService, ChainConfig, and QrProxyService dependencies.
   /// Immediately starts loading settings.
@@ -240,6 +240,10 @@ class PaymentGeneratorController extends ChangeNotifier {
   ///
   /// Throws an exception if the block fetch fails.
   Future<void> generateUrl({required String importo}) async {
+    // Set loading state
+    _isGeneratingQr = true;
+    notifyListeners();
+
     // Clear any previous state
     _generatedUrl = null;
     _bscScanUrl = null;
@@ -255,6 +259,7 @@ class PaymentGeneratorController extends ChangeNotifier {
     if (_receivingAddress == null || _amountMultiplier == null) {
       _errorMessage =
           "Per favore configura le impostazioni prima di generare un URL.";
+      _isGeneratingQr = false;
       notifyListeners();
       return;
     }
@@ -264,6 +269,7 @@ class PaymentGeneratorController extends ChangeNotifier {
     final double? amount = double.tryParse(normalizedImporto);
     if (amount == null || amount <= 0) {
       _errorMessage = "Per favore inserisci un importo valido.";
+      _isGeneratingQr = false;
       notifyListeners();
       return;
     }
@@ -275,6 +281,7 @@ class PaymentGeneratorController extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error fetching current block: $e');
       _errorMessage = "Failed to fetch current block. Please try again.";
+      _isGeneratingQr = false;
       notifyListeners();
       return;
     }
@@ -310,13 +317,12 @@ class PaymentGeneratorController extends ChangeNotifier {
     _qrCreationTimestamp =
         DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
 
-    // 7. Set the navigation event flag
-    _navigateToQr = true;
-
-    notifyListeners();
-
-    // 8. Generate the styled QR code from qr.io API
+    // 7. Generate the styled QR code from qr.io API
     await generateQrCodeFromApi(_generatedUrl!);
+
+    // Clear loading state
+    _isGeneratingQr = false;
+    notifyListeners();
   }
 
   /// Clears the generated URL and error state to return to the input screen.
@@ -364,19 +370,14 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// server-side styling defaults (blue/white theme with circle markers and logo).
   /// The generated QR code image bytes are downloaded and stored in _qrCodeImageBytes.
   Future<void> generateQrCodeFromApi(String paymentUrl) async {
-    _isGeneratingQrCode = true;
-    notifyListeners();
-
     try {
       // Call proxy with only the data field
       // Server will apply default styling configuration
       _qrJpgUrl = await _qrProxyService.create(data: paymentUrl);
+      _navigateToQr = true;
     } catch (e) {
       debugPrint('Error calling QR proxy: $e');
       _errorMessage = 'Error generating QR code: $e';
-    } finally {
-      _isGeneratingQrCode = false;
-      notifyListeners();
     }
   }
 }
