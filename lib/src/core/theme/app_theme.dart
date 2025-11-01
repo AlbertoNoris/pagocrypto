@@ -1,66 +1,105 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Blue/white theme based on brand guidelines
-  static const Color primaryColor = Color(0xFF5B8FF9); // CryptoPOS blue
-  static const Color secondaryColor = Color(0xFF5B8FF9); // CryptoPOS blue
-  static const Color surfaceColor = Color(0xFFFFFFFF); // White
-  static const Color onSurfaceColor = Color(0xFF0A1E42); // Dark navy
-  static const Color backgroundColor = Color(0xFFF8F9FA); // Light background
+  // Updated color scheme
+  static const Color backgroundColor = Color(
+    0xFF2a7afb,
+  ); // Bright blue background
+  static const Color surfaceColor = Color(0xFF153D80); // Dark blue boxes/cards
+  static const Color primaryColor = Color(0xFF153D80); // Dark blue for buttons
+  static const Color secondaryColor = Color(0xFF153D80); // Dark blue
+  static const Color textColor = Colors.white; // White text
+  static const Color accentColor = Color(
+    0xFF4A90E2,
+  ); // Lighter blue for accents
+
+  // Aptos font family with fallbacks
+  static const String fontFamily = 'Aptos';
 
   static final ThemeData
   lightTheme = ThemeData.light(useMaterial3: true).copyWith(
     colorScheme: ColorScheme.fromSeed(
       seedColor: primaryColor,
       secondary: secondaryColor,
-      brightness: Brightness.light,
+      brightness: Brightness.dark,
       surface: surfaceColor,
-      onSurface: onSurfaceColor,
+      onSurface: textColor,
     ),
     scaffoldBackgroundColor: backgroundColor,
-    textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
-    appBarTheme: AppBarTheme(
-      backgroundColor: surfaceColor,
+    textTheme: const TextTheme(
+      displayLarge: TextStyle(fontFamily: fontFamily, color: textColor),
+      displayMedium: TextStyle(fontFamily: fontFamily, color: textColor),
+      displaySmall: TextStyle(fontFamily: fontFamily, color: textColor),
+      headlineLarge: TextStyle(fontFamily: fontFamily, color: textColor),
+      headlineMedium: TextStyle(fontFamily: fontFamily, color: textColor),
+      headlineSmall: TextStyle(fontFamily: fontFamily, color: textColor),
+      titleLarge: TextStyle(fontFamily: fontFamily, color: textColor),
+      titleMedium: TextStyle(fontFamily: fontFamily, color: textColor),
+      titleSmall: TextStyle(fontFamily: fontFamily, color: textColor),
+      bodyLarge: TextStyle(fontFamily: fontFamily, color: textColor),
+      bodyMedium: TextStyle(fontFamily: fontFamily, color: textColor),
+      bodySmall: TextStyle(fontFamily: fontFamily, color: textColor),
+      labelLarge: TextStyle(fontFamily: fontFamily, color: textColor),
+      labelMedium: TextStyle(fontFamily: fontFamily, color: textColor),
+      labelSmall: TextStyle(fontFamily: fontFamily, color: textColor),
+    ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: backgroundColor,
       elevation: 0,
-      titleTextStyle: GoogleFonts.inter(
+      titleTextStyle: TextStyle(
+        fontFamily: fontFamily,
         fontSize: 20,
         fontWeight: FontWeight.w600,
-        color: onSurfaceColor,
+        color: textColor,
       ),
-      iconTheme: const IconThemeData(color: onSurfaceColor),
+      iconTheme: IconThemeData(color: textColor),
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: secondaryColor,
+      backgroundColor: surfaceColor,
+      foregroundColor: textColor,
     ),
-    progressIndicatorTheme: ProgressIndicatorThemeData(color: secondaryColor),
-
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: textColor),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: surfaceColor,
+        foregroundColor: textColor,
+        textStyle: const TextStyle(
+          fontFamily: fontFamily,
+          fontWeight: FontWeight.w600,
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        //shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
-      labelStyle: GoogleFonts.inter(
-        color: onSurfaceColor,
+      filled: true,
+      fillColor: surfaceColor,
+      labelStyle: const TextStyle(
+        fontFamily: fontFamily,
+        color: textColor,
         fontWeight: FontWeight.w500,
       ),
-      hintStyle: GoogleFonts.inter(color: Colors.grey[600]),
+      hintStyle: TextStyle(
+        fontFamily: fontFamily,
+        color: textColor.withValues(alpha: 0.6),
+      ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+        borderRadius: BorderRadius.zero,
+        borderSide: BorderSide(
+          color: textColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+        borderRadius: BorderRadius.zero,
+        borderSide: BorderSide(
+          color: textColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: primaryColor, width: 2),
+      focusedBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.zero,
+        borderSide: BorderSide(color: accentColor, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     ),
@@ -68,17 +107,18 @@ class AppTheme {
       color: surfaceColor,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey[300]!, width: 1),
+        borderRadius: BorderRadius.zero,
+        //side: BorderSide(color: Colors.red, width: 1),
       ),
     ),
-    snackBarTheme: SnackBarThemeData(
-      backgroundColor: primaryColor,
-      contentTextStyle: GoogleFonts.inter(
-        color: Colors.white,
+    snackBarTheme: const SnackBarThemeData(
+      backgroundColor: surfaceColor,
+      contentTextStyle: TextStyle(
+        fontFamily: fontFamily,
+        color: textColor,
         fontWeight: FontWeight.w500,
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
     ),
   );
 }

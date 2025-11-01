@@ -15,6 +15,7 @@ class _SettingsViewState extends State<SettingsView> {
   late final TextEditingController _addressController;
   late final TextEditingController _multiplierController;
   late final TextEditingController _deviceIdController;
+  late final TextEditingController _apiKeyController;
   late final PaymentGeneratorController _controller;
 
   @override
@@ -29,6 +30,7 @@ class _SettingsViewState extends State<SettingsView> {
       text: _controller.amountMultiplier?.toString().replaceAll('.', ','),
     );
     _deviceIdController = TextEditingController(text: _controller.deviceId);
+    _apiKeyController = TextEditingController(text: _controller.apiKey);
   }
 
   @override
@@ -36,6 +38,7 @@ class _SettingsViewState extends State<SettingsView> {
     _addressController.dispose();
     _multiplierController.dispose();
     _deviceIdController.dispose();
+    _apiKeyController.dispose();
     super.dispose();
   }
 
@@ -44,6 +47,7 @@ class _SettingsViewState extends State<SettingsView> {
       address: _addressController.text,
       multiplierString: _multiplierController.text.replaceAll(',', '.'),
       deviceId: _deviceIdController.text,
+      apiKey: _apiKeyController.text,
     );
 
     // If save was successful (no error message), close the settings view
@@ -112,6 +116,14 @@ class _SettingsViewState extends State<SettingsView> {
                 labelText: 'Device ID (opzionale)',
               ),
             ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _apiKeyController,
+              decoration: const InputDecoration(
+                labelText: 'API Key (opzionale)',
+              ),
+              obscureText: true,
+            ),
             const SizedBox(height: 24),
             // Listen for and display errors
             Consumer<PaymentGeneratorController>(
@@ -122,13 +134,13 @@ class _SettingsViewState extends State<SettingsView> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFEBEE),
-                        borderRadius: BorderRadius.circular(8),
+                        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.zero,
                       ),
                       child: Text(
                         controller.errorMessage!,
-                        style: const TextStyle(
-                          color: Color(0xFFC62828),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
                           fontWeight: FontWeight.w500,
                         ),
                       ),

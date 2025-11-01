@@ -30,6 +30,7 @@ class PaymentGeneratorController extends ChangeNotifier {
   static const String _kAddressKey = 'receivingAddress';
   static const String _kMultiplierKey = 'amountMultiplier';
   static const String _kDeviceIdKey = 'deviceId';
+  static const String _kApiKeyKey = 'apiKey';
 
   // --- Private State ---
 
@@ -47,6 +48,9 @@ class PaymentGeneratorController extends ChangeNotifier {
 
   /// The device ID for identification (optional).
   String? _deviceId;
+
+  /// The API key for Etherscan service (optional).
+  String? _apiKey;
 
   /// The final generated URL for the QR code.
   String? _generatedUrl;
@@ -99,6 +103,9 @@ class PaymentGeneratorController extends ChangeNotifier {
 
   /// The device ID for identification.
   String? get deviceId => _deviceId;
+
+  /// The API key for Etherscan service.
+  String? get apiKey => _apiKey;
 
   /// The generated payment URL. Null if no URL is generated.
   String? get generatedUrl => _generatedUrl;
@@ -161,6 +168,7 @@ class PaymentGeneratorController extends ChangeNotifier {
       _receivingAddress = prefs.getString(_kAddressKey);
       _amountMultiplier = prefs.getDouble(_kMultiplierKey);
       _deviceId = prefs.getString(_kDeviceIdKey);
+      _apiKey = prefs.getString(_kApiKeyKey);
     } catch (e) {
       // In a real app, you might want more robust error handling
       debugPrint("Error loading settings: $e");
@@ -176,6 +184,7 @@ class PaymentGeneratorController extends ChangeNotifier {
     required String address,
     required String multiplierString,
     String? deviceId,
+    String? apiKey,
   }) async {
     _errorMessage = null;
 
@@ -202,11 +211,17 @@ class PaymentGeneratorController extends ChangeNotifier {
       } else {
         await prefs.remove(_kDeviceIdKey);
       }
+      if (apiKey != null && apiKey.isNotEmpty) {
+        await prefs.setString(_kApiKeyKey, apiKey);
+      } else {
+        await prefs.remove(_kApiKeyKey);
+      }
 
       // --- Update State ---
       _receivingAddress = address;
       _amountMultiplier = multiplier;
       _deviceId = deviceId;
+      _apiKey = apiKey;
     } catch (e) {
       debugPrint("Error saving settings: $e");
       _errorMessage = "Could not save settings.";
@@ -276,7 +291,7 @@ class PaymentGeneratorController extends ChangeNotifier {
 
     // --- Fetch current block (block-cursor anchor) ---
     try {
-      _qrStartBlock = await _etherscanService.getCurrentBlock();
+      _qrStartBlock = await _etherscanService.getCurrentBlock(apiKey: _apiKey);
       debugPrint('Captured start block: $_qrStartBlock');
     } catch (e) {
       debugPrint('Error fetching current block: $e');

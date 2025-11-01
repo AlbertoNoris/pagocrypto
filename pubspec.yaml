@@ -32,6 +32,18 @@ flutter:
   assets:
     - assets/
 
+  # Aptos font configuration
+  # Note: Font files need to be added to assets/fonts/ directory
+  # Download Aptos font files (.ttf) and place them in assets/fonts/
+  # fonts:
+  #   - family: Aptos
+  #     fonts:
+  #       - asset: assets/fonts/Aptos-Regular.ttf
+  #       - asset: assets/fonts/Aptos-Bold.ttf
+  #         weight: 700
+  #       - asset: assets/fonts/Aptos-Italic.ttf
+  #         style: italic
+
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true

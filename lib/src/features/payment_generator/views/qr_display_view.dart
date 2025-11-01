@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pagocrypto/src/core/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:pagocrypto/src/core/config/chain_config.dart';
 import 'package:pagocrypto/src/core/services/etherscan_service.dart';
@@ -58,6 +60,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       receivingAddress: generator.receivingAddress!,
       etherscanService: context.read<EtherscanService>(),
       chainConfig: context.read<ChainConfig>(),
+      apiKey: generator.apiKey,
     );
     _monitorController.startMonitoring();
     _monitoringInitialized = true;
@@ -119,12 +122,16 @@ class _QrDisplayViewState extends State<QrDisplayView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        //title: const Text('Payment QR Code'),
-        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/'),
         ),
+        title: SizedBox(
+          height: 200,
+          child: SvgPicture.asset('assets/name3.svg', fit: BoxFit.contain),
+        ),
+        actions: [SizedBox(width: 48)], // Spacer for centering
+        elevation: 0,
       ),
       body: Consumer<PaymentGeneratorController>(
         builder: (context, generatorController, child) {
@@ -146,7 +153,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                   if (!(_monitoringInitialized &&
                       _monitorController.status == PaymentStatus.completed))
                     Card(
-                      color: Colors.transparent,
+                      color: AppTheme.surfaceColor,
                       child: Padding(
                         padding: const EdgeInsets.all(18.0),
                         child: Column(
@@ -224,7 +231,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.secondary,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.zero,
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -302,7 +309,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                 'From: ${tx.from}',
                 overflow: TextOverflow.ellipsis,
               ),
-              trailing: const Icon(Icons.check_box, color: Colors.green),
+              trailing: const Icon(Icons.check_box, color: Colors.white),
             );
           },
         ),
@@ -315,7 +322,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.secondary,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.zero,
       ),
       child: Column(
         children: [

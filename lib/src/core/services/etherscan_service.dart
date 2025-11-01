@@ -26,10 +26,14 @@ class EtherscanService {
   ///
   /// The proxy server will add the API key server-side for security.
   /// Includes retry logic with exponential backoff for throttle errors.
-  Future<http.Response> _callProxy(Map<String, String> queryParams) async {
+  Future<http.Response> _callProxy(
+    Map<String, String> queryParams, {
+    String? apiKey,
+  }) async {
     final payload = {
       'chainId': config.chainId,
       'queryParams': queryParams,
+      if (apiKey != null && apiKey.isNotEmpty) 'apiKey': apiKey,
     };
 
     const int maxAttempts = 4; // 1 try + 3 retries
@@ -73,13 +77,13 @@ class EtherscanService {
   /// Returns the block number as an integer.
   ///
   /// Throws an exception if the API call fails.
-  Future<int> getCurrentBlock() async {
+  Future<int> getCurrentBlock({String? apiKey}) async {
     debugPrint('🔍 EtherscanService.getCurrentBlock (via proxy)');
 
     final response = await _callProxy({
       'module': 'proxy',
       'action': 'eth_blockNumber',
-    });
+    }, apiKey: apiKey);
 
     if (response.statusCode != 200) {
       throw Exception('Failed to fetch current block: ${response.statusCode}');
@@ -117,6 +121,7 @@ class EtherscanService {
   /// - [page]: Pagination page number (1-based).
   /// - [offset]: Number of results per page (max 10000).
   /// - [asc]: If true, sort ascending; if false, sort descending.
+  /// - [apiKey]: Optional API key to use for this request.
   ///
   /// No `tag=latest` parameter is used. The API supports block ranges via
   /// startblock and endblock parameters only.
@@ -127,6 +132,7 @@ class EtherscanService {
     required int page,
     int offset = 1000,
     bool asc = true,
+    String? apiKey,
   }) async {
     debugPrint('🔍 EtherscanService.getTokenTxPage (page $page, via proxy)');
 
@@ -141,7 +147,7 @@ class EtherscanService {
         'sort': asc ? 'asc' : 'desc',
         'page': page.toString(),
         'offset': offset.toString(),
-      });
+      }, apiKey: apiKey);
 
       if (response.statusCode != 200) {
         throw Exception('Failed to fetch transactions: ${response.statusCode}');
@@ -180,6 +186,7 @@ class EtherscanService {
   /// - [offset]: Results per page (default 1000, max 10000).
   /// - [maxPages]: Maximum number of pages to fetch (default 10).
   /// - [perPagePause]: Delay between pages to avoid rate limiting (default 300ms).
+  /// - [apiKey]: Optional API key to use for this request.
   ///
   /// Returns all transactions sorted in ascending order by block number.
   Future<List<Map<String, dynamic>>> getTokenTxFromBlock({
@@ -189,6 +196,7 @@ class EtherscanService {
     int offset = 1000,
     int maxPages = 10,
     Duration perPagePause = const Duration(milliseconds: 300),
+    String? apiKey,
   }) async {
     final results = <Map<String, dynamic>>[];
 
@@ -200,6 +208,7 @@ class EtherscanService {
         page: page,
         offset: offset,
         asc: true,
+        apiKey: apiKey,
       );
 
       if (batch.isEmpty) {
@@ -236,6 +245,7 @@ class EtherscanService {
   /// - [toBlock]: Ending block number (default 999999999).
   /// - [offset]: Results per page (default 1000).
   /// - [maxPages]: Maximum pages to fetch (default 10).
+  /// - [apiKey]: Optional API key to use for this request.
   ///
   /// Returns raw log data from the API.
   Future<List<Map<String, dynamic>>> getInboundTransferLogs({
@@ -244,6 +254,7 @@ class EtherscanService {
     int toBlock = 999999999,
     int offset = 1000,
     int maxPages = 10,
+    String? apiKey,
   }) async {
     // ERC-20 Transfer event signature: Transfer(address indexed from, address indexed to, uint256 value)
     const transferTopic =
@@ -271,7 +282,7 @@ class EtherscanService {
           'topic2': topic2,
           'page': page.toString(),
           'offset': offset.toString(),
-        });
+        }, apiKey: apiKey);
 
         if (response.statusCode != 200) {
           throw Exception('Failed to fetch logs: ${response.statusCode}');

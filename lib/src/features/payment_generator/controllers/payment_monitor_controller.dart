@@ -22,6 +22,7 @@ class PaymentMonitorController extends ChangeNotifier {
   final double amountRequested;
   final int startBlock; // Block-cursor anchor (replaces timestamp)
   final String receivingAddress;
+  final String? apiKey; // Optional API key for Etherscan service
 
   // --- Private State ---
   PaymentStatus _status = PaymentStatus.monitoring;
@@ -50,12 +51,14 @@ class PaymentMonitorController extends ChangeNotifier {
   /// - [receivingAddress]: Wallet address to monitor.
   /// - [etherscanService]: Service for API calls.
   /// - [chainConfig]: Chain configuration for API requests.
+  /// - [apiKey]: Optional API key for Etherscan service.
   PaymentMonitorController({
     required this.amountRequested,
     required this.startBlock,
     required this.receivingAddress,
     required EtherscanService etherscanService,
     required ChainConfig chainConfig,
+    this.apiKey,
   })  : _etherscanService = etherscanService,
         _chainConfig = chainConfig {
     _nextFromBlock = startBlock;
@@ -106,6 +109,7 @@ class PaymentMonitorController extends ChangeNotifier {
         offset: 200, // Smaller page size for monitoring
         maxPages: 3, // Cap bursts
         perPagePause: const Duration(milliseconds: 300),
+        apiKey: apiKey,
       );
 
       if (_disposed) return;

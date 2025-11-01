@@ -70,18 +70,22 @@ class _PasscodeViewState extends State<PasscodeView> {
                 return Container(
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Theme.of(context).colorScheme.surface,
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                    ),
+                    borderRadius: BorderRadius.zero,
                   ),
                   child: Text(
                     controller.passcodeDisplay.isEmpty
                         ? '----'
                         : controller.passcodeDisplay,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 36,
                       letterSpacing: 16,
                       fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 );
@@ -98,14 +102,14 @@ class _PasscodeViewState extends State<PasscodeView> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFEBEE),
-                        borderRadius: BorderRadius.circular(8),
+                        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.zero,
                       ),
                       child: Text(
                         controller.errorMessage!,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFFC62828),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -162,17 +166,18 @@ class _PasscodeViewState extends State<PasscodeView> {
     bool isDelete = false,
     bool isClear = false,
   }) {
+    final theme = Theme.of(context);
     final Color buttonColor = isDelete || isClear
-        ? Colors.orange[100]!
-        : Colors.grey[200]!;
-    final Color textColor = isDelete || isClear ? Colors.orange : Colors.black;
+        ? theme.colorScheme.error
+        : theme.colorScheme.surface;
+    final Color textColor = theme.colorScheme.onSurface;
 
     return Material(
       color: buttonColor,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.zero,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.zero,
         child: Center(
           child: Text(
             label,
