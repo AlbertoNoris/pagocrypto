@@ -48,8 +48,8 @@ class _HomeViewState extends State<HomeView> {
       appBar: AppBar(
         leading: SizedBox(width: 48), // Placeholder for centering the logo
         title: SizedBox(
-          height: 200,
-          child: Image.asset('assets/name3.png', fit: BoxFit.contain),
+          height: 30,
+          child: Image.asset('name3.png', fit: BoxFit.contain),
         ),
         elevation: 0,
         actions: [

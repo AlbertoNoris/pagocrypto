@@ -45,16 +45,60 @@ class EtherscanService {
     return res;
   }
 
+  /// Calls the proxy endpoint with automatic retry for rate limit errors.
+  ///
+  /// If the API returns a rate limit error (status: "0" with "temporarily unavailable"
+  /// message), this method will automatically retry every 3 seconds until successful.
+  ///
+  /// This ensures resilient operation even under high network activity on Etherscan.
+  Future<http.Response> _callProxyWithRetry(
+    Map<String, String> queryParams, {
+    String? apiKey,
+  }) async {
+    while (true) {
+      final response = await _callProxy(queryParams, apiKey: apiKey);
+
+      // Check if we got a rate limit error
+      if (response.statusCode == 200) {
+        try {
+          final data = jsonDecode(response.body);
+
+          // Check for Etherscan rate limit response
+          if (data is Map &&
+              data['status'] == '0' &&
+              data['message'] == 'NOTOK') {
+            final result = data['result']?.toString() ?? '';
+
+            // Check if it's the specific rate limit error
+            if (result.contains('temporarily unavailable') ||
+                result.contains('Free API access')) {
+              debugPrint('⏱️ API rate limited, retrying in 3 seconds...');
+              await Future.delayed(const Duration(seconds: 3));
+              continue; // Retry
+            }
+          }
+        } catch (e) {
+          // If JSON parsing fails, just return the response as-is
+          // and let the caller handle it
+        }
+      }
+
+      // Not a rate limit error, return the response
+      return response;
+    }
+  }
+
   /// Fetches the current block number from the blockchain.
   ///
   /// Uses proxy action: eth_blockNumber (hex response).
   /// Returns the block number as an integer.
   ///
   /// Throws an exception if the API call fails.
+  /// Automatically retries every 3 seconds if rate limited.
   Future<int> getCurrentBlock({String? apiKey}) async {
     debugPrint('🔍 EtherscanService.getCurrentBlock (via proxy)');
 
-    final response = await _callProxy({
+    final response = await _callProxyWithRetry({
       'module': 'proxy',
       'action': 'eth_blockNumber',
     }, apiKey: apiKey);
@@ -99,6 +143,7 @@ class EtherscanService {
   ///
   /// No `tag=latest` parameter is used. The API supports block ranges via
   /// startblock and endblock parameters only.
+  /// Automatically retries every 3 seconds if rate limited.
   Future<List<Map<String, dynamic>>> getTokenTxPage({
     required String address,
     required String contractAddress,
@@ -111,7 +156,7 @@ class EtherscanService {
     debugPrint('🔍 EtherscanService.getTokenTxPage (page $page, via proxy)');
 
     try {
-      final response = await _callProxy({
+      final response = await _callProxyWithRetry({
         'module': 'account',
         'action': 'tokentx',
         'contractaddress': contractAddress,
@@ -222,6 +267,7 @@ class EtherscanService {
   /// - [apiKey]: Optional API key to use for this request.
   ///
   /// Returns raw log data from the API.
+  /// Automatically retries every 3 seconds if rate limited.
   Future<List<Map<String, dynamic>>> getInboundTransferLogs({
     required String recipientAddress,
     required int fromBlock,
@@ -246,7 +292,7 @@ class EtherscanService {
       );
 
       try {
-        final response = await _callProxy({
+        final response = await _callProxyWithRetry({
           'module': 'logs',
           'action': 'getLogs',
           'address': config.tokenAddress,

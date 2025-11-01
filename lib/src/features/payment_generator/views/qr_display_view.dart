@@ -144,8 +144,8 @@ class _QrDisplayViewState extends State<QrDisplayView> {
           onPressed: () => context.go('/'),
         ),
         title: SizedBox(
-          height: 200,
-          child: Image.asset('assets/name3.png', fit: BoxFit.contain),
+          height: 30,
+          child: Image.asset('name3.png', fit: BoxFit.contain),
         ),
         actions: [SizedBox(width: 48)], // Spacer for centering
         elevation: 0,
