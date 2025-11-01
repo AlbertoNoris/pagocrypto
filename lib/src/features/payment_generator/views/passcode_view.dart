@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:pagocrypto/src/core/widgets/max_width_container.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/passcode_controller.dart';
 
 class PasscodeView extends StatefulWidget {
@@ -51,12 +52,13 @@ class _PasscodeViewState extends State<PasscodeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Logs Amministratore')),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      body: MaxWidthContainer(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             const Text(
               'Enter passcode',
               textAlign: TextAlign.center,
@@ -154,7 +156,8 @@ class _PasscodeViewState extends State<PasscodeView> {
                 ],
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

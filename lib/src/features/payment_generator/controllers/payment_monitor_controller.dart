@@ -59,8 +59,8 @@ class PaymentMonitorController extends ChangeNotifier {
     required EtherscanService etherscanService,
     required ChainConfig chainConfig,
     this.apiKey,
-  })  : _etherscanService = etherscanService,
-        _chainConfig = chainConfig {
+  }) : _etherscanService = etherscanService,
+       _chainConfig = chainConfig {
     _nextFromBlock = startBlock;
   }
 
@@ -71,7 +71,7 @@ class PaymentMonitorController extends ChangeNotifier {
     void schedule() {
       final jitterMs = 250 + Random().nextInt(500); // 250–750 ms
       _pollingTimer = Timer(
-        Duration(seconds: 8) + Duration(milliseconds: jitterMs),
+        Duration(seconds: 4) + Duration(milliseconds: jitterMs),
         () async {
           await _checkPaymentStatus();
           if (!_disposed && _status != PaymentStatus.completed) {
@@ -81,7 +81,8 @@ class PaymentMonitorController extends ChangeNotifier {
       );
     }
 
-    _checkPaymentStatus();
+    // Start timer-based polling without immediate check
+    // (newly generated QR codes won't have transactions yet)
     schedule();
   }
 
@@ -158,13 +159,16 @@ class PaymentMonitorController extends ChangeNotifier {
         stopMonitoring();
       } else if (_amountReceived > 0) {
         _status = PaymentStatus.partiallyPaid;
-        debugPrint('⚠️ Partial payment received: $_amountReceived / $amountRequested');
+        debugPrint(
+          '⚠️ Partial payment received: $_amountReceived / $amountRequested',
+        );
       } else {
         _status = PaymentStatus.monitoring;
       }
     } catch (e) {
       final errorText = e.toString().toLowerCase();
-      final isThrottleError = errorText.contains('temporarily unavailable') ||
+      final isThrottleError =
+          errorText.contains('temporarily unavailable') ||
           errorText.contains('rate limit') ||
           errorText.contains('too many requests');
 

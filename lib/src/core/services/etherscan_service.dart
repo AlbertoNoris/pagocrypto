@@ -25,7 +25,7 @@ class EtherscanService {
   /// Calls the proxy endpoint with query parameters.
   ///
   /// The proxy server will add the API key server-side for security.
-  /// Includes retry logic with exponential backoff for throttle errors.
+  /// No retry logic - throttle errors are handled by the caller's polling interval.
   Future<http.Response> _callProxy(
     Map<String, String> queryParams, {
     String? apiKey,
@@ -36,39 +36,13 @@ class EtherscanService {
       if (apiKey != null && apiKey.isNotEmpty) 'apiKey': apiKey,
     };
 
-    const int maxAttempts = 4; // 1 try + 3 retries
-    int baseDelayMs = 350;
+    final res = await _httpClient.post(
+      Uri.parse(config.proxyUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
 
-    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-      final res = await _httpClient.post(
-        Uri.parse(config.proxyUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
-      );
-
-      // Pass through non-200 unless the body shows the known throttle condition.
-      final bodyText = res.body.toLowerCase();
-      final isThrottleHttp = res.statusCode == 429;
-      final isThrottleBody = bodyText.contains('free api access is temporarily unavailable');
-
-      if (!isThrottleHttp && !isThrottleBody) {
-        return res;
-      }
-
-      // Last attempt: return whatever we got.
-      if (attempt == maxAttempts) {
-        return res;
-      }
-
-      // Backoff + jitter
-      final jitter = (100 * attempt);
-      final delay = Duration(milliseconds: baseDelayMs + jitter);
-      await Future.delayed(delay);
-      baseDelayMs *= 2;
-    }
-
-    // Unreachable
-    return http.Response('Retry loop failed unexpectedly', 520);
+    return res;
   }
 
   /// Fetches the current block number from the blockchain.

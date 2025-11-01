@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:pagocrypto/src/core/widgets/max_width_container.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
 
 class SettingsView extends StatefulWidget {
@@ -79,11 +80,12 @@ class _SettingsViewState extends State<SettingsView> {
           },
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      body: MaxWidthContainer(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             TextField(
               controller: _addressController,
               decoration: const InputDecoration(
@@ -151,7 +153,8 @@ class _SettingsViewState extends State<SettingsView> {
               },
             ),
             ElevatedButton(onPressed: _save, child: const Text('Save')),
-          ],
+            ],
+          ),
         ),
       ),
     );

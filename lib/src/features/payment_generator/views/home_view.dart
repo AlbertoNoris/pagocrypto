@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:pagocrypto/src/core/widgets/max_width_container.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
 
 class HomeView extends StatefulWidget {
@@ -59,16 +60,18 @@ class _HomeViewState extends State<HomeView> {
           ),
         ],
       ),
-      body: Consumer<PaymentGeneratorController>(
-        builder: (context, controller, child) {
-          if (controller.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (controller.receivingAddress == null) {
-            return _buildSettingsPrompt(context);
-          }
-          return _buildAmountInput(context, controller);
-        },
+      body: MaxWidthContainer(
+        child: Consumer<PaymentGeneratorController>(
+          builder: (context, controller, child) {
+            if (controller.isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (controller.receivingAddress == null) {
+              return _buildSettingsPrompt(context);
+            }
+            return _buildAmountInput(context, controller);
+          },
+        ),
       ),
     );
   }
