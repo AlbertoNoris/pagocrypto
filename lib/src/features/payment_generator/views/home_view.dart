@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:pagocrypto/src/core/widgets/max_width_container.dart';
@@ -50,7 +49,7 @@ class _HomeViewState extends State<HomeView> {
         leading: SizedBox(width: 48), // Placeholder for centering the logo
         title: SizedBox(
           height: 200,
-          child: SvgPicture.asset('assets/name3.svg', fit: BoxFit.contain),
+          child: Image.asset('assets/name3.png', fit: BoxFit.contain),
         ),
         elevation: 0,
         actions: [

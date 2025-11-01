@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pagocrypto/src/core/theme/app_theme.dart';
 import 'package:pagocrypto/src/core/widgets/max_width_container.dart';
@@ -146,7 +145,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
         ),
         title: SizedBox(
           height: 200,
-          child: SvgPicture.asset('assets/name3.svg', fit: BoxFit.contain),
+          child: Image.asset('assets/name3.png', fit: BoxFit.contain),
         ),
         actions: [SizedBox(width: 48)], // Spacer for centering
         elevation: 0,
