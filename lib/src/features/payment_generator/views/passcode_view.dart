@@ -76,7 +76,7 @@ class _PasscodeViewState extends State<PasscodeView> {
                     border: Border.all(
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
                     ),
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     controller.passcodeDisplay.isEmpty
@@ -105,7 +105,7 @@ class _PasscodeViewState extends State<PasscodeView> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.error.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.zero,
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         controller.errorMessage!,
@@ -177,10 +177,10 @@ class _PasscodeViewState extends State<PasscodeView> {
 
     return Material(
       color: buttonColor,
-      borderRadius: BorderRadius.zero,
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.zero,
+        borderRadius: BorderRadius.circular(12),
         child: Center(
           child: Text(
             label,

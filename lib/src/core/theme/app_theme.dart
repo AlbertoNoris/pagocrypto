@@ -68,7 +68,9 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
         padding: const EdgeInsets.symmetric(vertical: 20),
-        //shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -84,22 +86,22 @@ class AppTheme {
         color: textColor.withValues(alpha: 0.6),
       ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.zero,
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(
           color: textColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.zero,
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(
           color: textColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
-      focusedBorder: const OutlineInputBorder(
-        borderRadius: BorderRadius.zero,
-        borderSide: BorderSide(color: accentColor, width: 2),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: accentColor, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     ),
@@ -107,18 +109,19 @@ class AppTheme {
       color: surfaceColor,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.zero,
-        //side: BorderSide(color: Colors.red, width: 1),
+        borderRadius: BorderRadius.circular(12),
       ),
     ),
-    snackBarTheme: const SnackBarThemeData(
+    snackBarTheme: SnackBarThemeData(
       backgroundColor: surfaceColor,
-      contentTextStyle: TextStyle(
+      contentTextStyle: const TextStyle(
         fontFamily: fontFamily,
         color: textColor,
         fontWeight: FontWeight.w500,
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
     ),
   );
 }

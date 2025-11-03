@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Crypto QR Generator',
+      title: 'CryptoPOS',
       routerConfig: AppRouter.router,
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,

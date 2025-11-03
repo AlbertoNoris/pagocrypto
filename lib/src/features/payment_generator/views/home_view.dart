@@ -49,7 +49,7 @@ class _HomeViewState extends State<HomeView> {
         leading: SizedBox(width: 48), // Placeholder for centering the logo
         title: SizedBox(
           height: 30,
-          child: Image.asset('name3.png', fit: BoxFit.contain),
+          child: Image.asset('assets/name3.png', fit: BoxFit.contain),
         ),
         elevation: 0,
         actions: [
@@ -254,7 +254,7 @@ class _HomeViewState extends State<HomeView> {
                       color: Theme.of(
                         context,
                       ).colorScheme.error.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       controller.errorMessage!,
@@ -271,47 +271,38 @@ class _HomeViewState extends State<HomeView> {
               Consumer<PaymentGeneratorController>(
                 builder: (context, controller, child) {
                   final isGenerating = controller.isGeneratingQr;
-                  return Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: ElevatedButton(
-                      onPressed: isGenerating
-                          ? null
-                          : () async {
-                              // generateUrl is now async due to block fetching
-                              await context
-                                  .read<PaymentGeneratorController>()
-                                  .generateUrl(importo: _amountController.text);
-                              // Navigation is now handled by the listener in initState
-                            },
-                      child: isGenerating
-                          ? const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
+                  return ElevatedButton(
+                    onPressed: isGenerating
+                        ? null
+                        : () async {
+                            // generateUrl is now async due to block fetching
+                            await context
+                                .read<PaymentGeneratorController>()
+                                .generateUrl(importo: _amountController.text);
+                            // Navigation is now handled by the listener in initState
+                          },
+                    child: isGenerating
+                        ? const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
                                 ),
-                                SizedBox(width: 12),
-                                Text(
-                                  'Generazione in corso...',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : const Text(
-                              'Genera codice QR',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
                               ),
-                            ),
-                    ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Generazione in corso...',
+                                style: TextStyle(fontSize: 18),
+                              ),
+                            ],
+                          )
+                        : const Text(
+                            'Genera codice QR',
+                            style: TextStyle(fontSize: 18),
+                          ),
                   );
                 },
               ),
@@ -334,17 +325,13 @@ class _HomeViewState extends State<HomeView> {
 
   Widget _buildCard({required String title, required List<Widget> children}) {
     return Card(
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 16),
             ...children,
           ],

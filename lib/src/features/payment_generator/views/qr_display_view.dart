@@ -145,7 +145,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
         ),
         title: SizedBox(
           height: 30,
-          child: Image.asset('name3.png', fit: BoxFit.contain),
+          child: Image.asset('assets/name3.png', fit: BoxFit.contain),
         ),
         actions: [SizedBox(width: 48)], // Spacer for centering
         elevation: 0,
@@ -250,7 +250,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.secondary,
-        borderRadius: BorderRadius.zero,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -341,7 +341,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.secondary,
-        borderRadius: BorderRadius.zero,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
