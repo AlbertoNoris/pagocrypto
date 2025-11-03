@@ -65,12 +65,10 @@ class AppTheme {
         foregroundColor: textColor,
         textStyle: const TextStyle(
           fontFamily: fontFamily,
-          fontWeight: FontWeight.w600,
+          //fontWeight: FontWeight.w600,
         ),
         padding: const EdgeInsets.symmetric(vertical: 20),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -108,9 +106,7 @@ class AppTheme {
     cardTheme: CardThemeData(
       color: surfaceColor,
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: surfaceColor,
@@ -119,9 +115,7 @@ class AppTheme {
         color: textColor,
         fontWeight: FontWeight.w500,
       ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
   );
 }
