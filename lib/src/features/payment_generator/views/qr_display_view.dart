@@ -106,32 +106,22 @@ class _QrDisplayViewState extends State<QrDisplayView> {
   Widget _buildQrCodeWidget(PaymentGeneratorController controller) {
     // Show loading indicator while URL is being generated
     if (controller.qrJpgUrl == null) {
-      return Center(
-        child: const SizedBox(
-          width: 280.0,
-          height: 280.0,
-          child: Center(child: CircularProgressIndicator()),
-        ),
+      return const SizedBox(
+        height: 300.0,
+        child: Center(child: CircularProgressIndicator()),
       );
     }
 
     // Display the QR code using the StyledQr widget
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(30.0),
-        child: Image.memory(
-          controller.qrJpgUrl!,
-
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return const SizedBox(
-              width: 280.0,
-              height: 280.0,
-              child: Center(child: Text('Errore nel caricamento del QR code')),
-            );
-          },
-        ),
-      ),
+    return Image.memory(
+      controller.qrJpgUrl!,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        return const SizedBox(
+          height: 300.0,
+          child: Center(child: Text('Errore nel caricamento del QR code')),
+        );
+      },
     );
   }
 
@@ -141,7 +131,11 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
+          onPressed: () {
+            // Clear the generated URL and reset block reference
+            // The listener will automatically navigate back to home
+            _generatorController.clearGeneratedUrl();
+          },
         ),
         title: SizedBox(
           height: 30,
@@ -170,14 +164,14 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                     // QR Code Card - hidden when payment is completed
                     if (!(_monitoringInitialized &&
                         _monitorController.status == PaymentStatus.completed))
-                      Card(
-                        color: AppTheme.surfaceColor,
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: AppTheme.surfaceColor,
+                        ),
                         child: Padding(
-                          padding: const EdgeInsets.all(18.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [_buildQrCodeWidget(generatorController)],
-                          ),
+                          padding: const EdgeInsets.all(10.0),
+                          child: _buildQrCodeWidget(generatorController),
                         ),
                       ),
                     if (!(_monitoringInitialized &&

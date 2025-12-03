@@ -300,7 +300,7 @@ class _HomeViewState extends State<HomeView> {
                             ],
                           )
                         : const Text(
-                            'Genera codice QR',
+                            'Genera codice qr',
                             style: TextStyle(fontSize: 18),
                           ),
                   );

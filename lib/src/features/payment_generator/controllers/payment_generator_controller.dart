@@ -81,6 +81,9 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// Used to monitor payments from this block forward without timestamp filtering.
   int? _qrStartBlock;
 
+  /// Whether the controller is currently fetching the block number.
+  bool _isBlockFetching = false;
+
   /// The QR code image bytes downloaded from the API.
   Uint8List? _qrCodeImageBytes;
 
@@ -144,6 +147,12 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// The QR code image URL from the API (used on web to avoid CORS).
   Uint8List? get qrJpgUrl => _qrJpgUrl;
 
+  /// Whether the controller is currently fetching the block number.
+  bool get isBlockFetching => _isBlockFetching;
+
+  /// Whether the block number is ready for use (fetched and available).
+  bool get isBlockReady => _qrStartBlock != null && !_isBlockFetching;
+
   /// Constructor. Accepts EtherscanService, ChainConfig, and QrProxyService dependencies.
   /// Immediately starts loading settings.
   PaymentGeneratorController({
@@ -177,6 +186,34 @@ class PaymentGeneratorController extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+
+    // Start fetching block number in background for first QR generation
+    startBlockFetching();
+  }
+
+  /// Starts fetching the current block number in the background.
+  ///
+  /// This method is called automatically when the controller is created and
+  /// when a payment is cleared to prepare for the next payment. It fetches
+  /// the block number asynchronously without blocking the UI.
+  ///
+  /// If the fetch fails, the error is logged but does not show to the user
+  /// unless they try to generate a QR code.
+  Future<void> startBlockFetching() async {
+    _isBlockFetching = true;
+    _qrStartBlock = null;
+    notifyListeners();
+
+    try {
+      _qrStartBlock = await _etherscanService.getCurrentBlock(apiKey: _apiKey);
+      debugPrint('Background block fetch completed: $_qrStartBlock');
+    } catch (e) {
+      debugPrint('Background block fetch failed: $e');
+      // Don't set error message here - let generateUrl() handle it
+    } finally {
+      _isBlockFetching = false;
+      notifyListeners();
+    }
   }
 
   /// Validates and saves the user's settings to SharedPreferences.
@@ -250,10 +287,11 @@ class PaymentGeneratorController extends ChangeNotifier {
 
   /// Generates the payment URL based on the user's input amount.
   ///
-  /// This is now async to fetch the current block number from the blockchain.
-  /// The block number is stored as _qrStartBlock for block-cursor anchoring.
+  /// This method uses the pre-fetched block number for block-cursor anchoring.
+  /// If the block is still being fetched in the background, it waits for the
+  /// fetch to complete before proceeding.
   ///
-  /// Throws an exception if the block fetch fails.
+  /// Returns with an error message if the block fetch failed or is unavailable.
   Future<void> generateUrl({required String importo}) async {
     // Set loading state
     _isGeneratingQr = true;
@@ -266,7 +304,6 @@ class PaymentGeneratorController extends ChangeNotifier {
     _finalAmount = null;
     _errorMessage = null;
     _navigateToQr = false;
-    _qrStartBlock = null;
     _qrCodeImageBytes = null;
     _qrJpgUrl = null;
 
@@ -289,17 +326,25 @@ class PaymentGeneratorController extends ChangeNotifier {
       return;
     }
 
-    // --- Fetch current block (block-cursor anchor) ---
-    try {
-      _qrStartBlock = await _etherscanService.getCurrentBlock(apiKey: _apiKey);
-      debugPrint('Captured start block: $_qrStartBlock');
-    } catch (e) {
-      debugPrint('Error fetching current block: $e');
-      _errorMessage = "Failed to fetch current block. Please try again.";
+    // --- Wait for block fetch if still in progress ---
+    if (_isBlockFetching) {
+      debugPrint('Waiting for background block fetch to complete...');
+      // Wait for block fetch to complete by polling
+      while (_isBlockFetching) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+    }
+
+    // --- Verify block was fetched successfully ---
+    if (_qrStartBlock == null) {
+      debugPrint('Block fetch failed or not available');
+      _errorMessage = "Impossibile ottenere il blocco corrente. Riprova.";
       _isGeneratingQr = false;
       notifyListeners();
       return;
     }
+
+    debugPrint('Using block: $_qrStartBlock for QR generation');
 
     // --- Logic from PDF ---
 
@@ -341,6 +386,9 @@ class PaymentGeneratorController extends ChangeNotifier {
   }
 
   /// Clears the generated URL and error state to return to the input screen.
+  ///
+  /// This also resets the block reference and starts a new background fetch
+  /// to prepare for the next payment generation.
   void clearGeneratedUrl() {
     _generatedUrl = null;
     _bscScanUrl = null;
@@ -349,7 +397,11 @@ class PaymentGeneratorController extends ChangeNotifier {
     _errorMessage = null;
     _qrCodeImageBytes = null;
     _qrJpgUrl = null;
+    _qrStartBlock = null;
     notifyListeners();
+
+    // Start fetching a new block for the next payment
+    startBlockFetching();
   }
 
   /// Updates the input amount and triggers a rebuild.
