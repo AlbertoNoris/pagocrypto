@@ -7,6 +7,9 @@ import 'package:pagocrypto/src/core/config/chain_config.dart';
 import 'package:pagocrypto/src/core/services/moralis_service.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_monitor_controller.dart';
+import 'package:pretty_qr_code/pretty_qr_code.dart';
+// ignore: implementation_imports
+import 'package:pretty_qr_code/src/base/components/pretty_qr_component.dart';
 
 class QrDisplayView extends StatefulWidget {
   const QrDisplayView({super.key});
@@ -105,23 +108,31 @@ class _QrDisplayViewState extends State<QrDisplayView> {
   /// Builds the QR code widget using the simplified StyledQr widget
   Widget _buildQrCodeWidget(PaymentGeneratorController controller) {
     // Show loading indicator while URL is being generated
-    if (controller.qrJpgUrl == null) {
+    if (controller.generatedUrl == null) {
       return const SizedBox(
         height: 300.0,
         child: Center(child: CircularProgressIndicator()),
       );
     }
 
-    // Display the QR code using the StyledQr widget
-    return Image.memory(
-      controller.qrJpgUrl!,
-      fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) {
-        return const SizedBox(
-          height: 300.0,
-          child: Center(child: Text('Errore nel caricamento del QR code')),
-        );
-      },
+    // Display the QR code using the PrettyQrView widget
+    // Display the QR code using the PrettyQrView widget
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+
+      child: PrettyQrView.data(
+        data: controller.generatedUrl!,
+        errorCorrectLevel: QrErrorCorrectLevel.H,
+        decoration: PrettyQrDecoration(
+          image: const PrettyQrDecorationImage(
+            image: AssetImage('assets/icon3-nobg.png'),
+          ),
+          shape: CustomQrShape(
+            color: Colors.white,
+            backgroundColor: const Color(0xFF1F4B99),
+          ),
+        ),
+      ),
     );
   }
 
@@ -383,5 +394,77 @@ class _QrDisplayViewState extends State<QrDisplayView> {
         ],
       ),
     );
+  }
+}
+
+class CustomQrShape extends PrettyQrShape {
+  final Color color;
+  final Color backgroundColor;
+  final PrettyQrSmoothSymbol _smoothSymbol;
+
+  CustomQrShape({required this.color, required this.backgroundColor})
+    : _smoothSymbol = PrettyQrSmoothSymbol(color: color, roundFactor: 1.0);
+
+  @override
+  void paint(PrettyQrPaintingContext context) {
+    // 1. Paint data modules (excluding finder patterns)
+    // ignore: invalid_use_of_internal_member
+    final maskedMatrix = PrettyQrMatrix.masked(
+      context.matrix,
+      exclude: {PrettyQrComponentType.finderPattern},
+    );
+
+    final maskedContext = context.copyWith(matrix: maskedMatrix);
+    _smoothSymbol.paint(maskedContext);
+
+    // 2. Paint finder patterns as circles
+    final brush = PrettyQrBrush.from(color);
+    final paint = brush.toPaint(
+      context.estimatedBounds,
+      textDirection: context.textDirection,
+    );
+
+    final backgroundPaint = Paint()..color = backgroundColor;
+
+    final moduleSize = context.estimatedBounds.width / context.matrix.dimension;
+
+    for (final pattern in context.matrix.positionDetectionPatterns) {
+      // Pattern is 7x7 modules
+      final size = 7 * moduleSize;
+      final x = pattern.left * moduleSize;
+      final y = pattern.top * moduleSize;
+
+      final center = Offset(x + size / 2, y + size / 2);
+
+      // Outer circle (7 modules diameter) - Foreground
+      context.canvas.drawCircle(center, size / 2, paint);
+
+      // Middle circle (5 modules diameter) - Background
+      context.canvas.drawCircle(center, (5 * moduleSize) / 2, backgroundPaint);
+
+      // Inner circle (3 modules diameter) - Foreground
+      context.canvas.drawCircle(center, (3 * moduleSize) / 2, paint);
+    }
+  }
+
+  @override
+  PrettyQrShape? lerpFrom(PrettyQrShape? a, double t) {
+    return this; // Simplified for now
+  }
+
+  @override
+  PrettyQrShape? lerpTo(PrettyQrShape? b, double t) {
+    return this; // Simplified for now
+  }
+
+  @override
+  int get hashCode => Object.hash(color, backgroundColor);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is CustomQrShape &&
+        other.color == color &&
+        other.backgroundColor == backgroundColor;
   }
 }

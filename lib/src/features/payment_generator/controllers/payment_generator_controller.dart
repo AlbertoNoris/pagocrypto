@@ -387,7 +387,8 @@ class PaymentGeneratorController extends ChangeNotifier {
         DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
 
     // 7. Generate the styled QR code from qr.io API
-    await generateQrCodeFromApi(_generatedUrl!);
+    // await generateQrCodeFromApi(_generatedUrl!);
+    _navigateToQr = true;
 
     // Clear loading state
     _isGeneratingQr = false;
