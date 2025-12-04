@@ -17,6 +17,9 @@ class ChainConfig {
   /// The ERC-20 token contract address on this chain.
   final String tokenAddress;
 
+  /// The number of decimals for the token (default 18).
+  final int tokenDecimals;
+
   /// Display name for the chain (e.g., "BSC", "Ethereum").
   final String chainName;
 
@@ -25,6 +28,7 @@ class ChainConfig {
     required this.proxyUrl,
     required this.explorerUrl,
     required this.tokenAddress,
+    this.tokenDecimals = 18,
     required this.chainName,
   });
 
@@ -32,12 +36,14 @@ class ChainConfig {
   factory ChainConfig.bsc({
     required String proxyUrl,
     required String tokenAddress,
+    int tokenDecimals = 18,
   }) {
     return ChainConfig(
       chainId: 56,
       proxyUrl: proxyUrl,
       explorerUrl: 'https://bscscan.com',
       tokenAddress: tokenAddress,
+      tokenDecimals: tokenDecimals,
       chainName: 'BSC',
     );
   }
@@ -46,17 +52,19 @@ class ChainConfig {
   factory ChainConfig.ethereum({
     required String proxyUrl,
     required String tokenAddress,
+    int tokenDecimals = 18,
   }) {
     return ChainConfig(
       chainId: 1,
       proxyUrl: proxyUrl,
       explorerUrl: 'https://etherscan.io',
       tokenAddress: tokenAddress,
+      tokenDecimals: tokenDecimals,
       chainName: 'Ethereum',
     );
   }
 
   @override
   String toString() =>
-      'ChainConfig(chainId: $chainId, chain: $chainName, token: $tokenAddress)';
+      'ChainConfig(chainId: $chainId, chain: $chainName, token: $tokenAddress, decimals: $tokenDecimals)';
 }

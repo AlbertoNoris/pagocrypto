@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:pagocrypto/src/core/config/chain_config.dart';
-import 'package:pagocrypto/src/core/services/etherscan_service.dart';
+import 'package:pagocrypto/src/core/services/moralis_service.dart';
 import 'package:pagocrypto/src/features/payment_generator/models/received_transaction.dart';
 
 /// Payment status enum for monitoring state.
@@ -12,25 +12,25 @@ enum PaymentStatus { monitoring, partiallyPaid, completed, error }
 /// Controller to monitor incoming ERC-20 token payments.
 ///
 /// This controller uses block-cursor anchoring to monitor payments from a
-/// specific starting block, eliminating the need for timestamp-based filtering.
-/// It polls the Etherscan API at regular intervals to check for incoming
-/// transactions.
+/// specific starting block.
+///
+/// UPDATED: Uses MoralisService and manual refresh (pull-to-refresh) instead of polling
+/// to respect API rate limits (Free Tier).
 class PaymentMonitorController extends ChangeNotifier {
   // --- Dependencies & Config ---
-  final EtherscanService _etherscanService;
+  final MoralisService _moralisService;
   final ChainConfig _chainConfig;
   final double amountRequested;
-  final int startBlock; // Block-cursor anchor (replaces timestamp)
+  final int startBlock; // Block-cursor anchor
   final String receivingAddress;
-  final String? apiKey; // Optional API key for Etherscan service
+  final String? apiKey; // Required for Moralis service
 
   // --- Private State ---
   PaymentStatus _status = PaymentStatus.monitoring;
-  bool _isLoading = true;
+  bool _isLoading = false; // Default to false, user triggers load
   String? _errorMessage;
   double _amountReceived = 0.0;
   List<ReceivedTransaction> _receivedTransactions = [];
-  Timer? _pollingTimer;
   bool _disposed = false;
   bool _inFlight = false; // Prevent overlapping checks
   late int _nextFromBlock; // Moving cursor for incremental monitoring
@@ -43,90 +43,93 @@ class PaymentMonitorController extends ChangeNotifier {
   List<ReceivedTransaction> get receivedTransactions => _receivedTransactions;
   double get amountLeft => max(0, amountRequested - _amountReceived);
 
+  Timer? _pollingTimer;
+
   /// Constructor for block-cursor anchoring payment monitoring.
   ///
   /// Parameters:
   /// - [amountRequested]: Expected amount to receive.
   /// - [startBlock]: Block number to start monitoring from (block-cursor anchor).
   /// - [receivingAddress]: Wallet address to monitor.
-  /// - [etherscanService]: Service for API calls.
+  /// - [moralisService]: Service for API calls.
   /// - [chainConfig]: Chain configuration for API requests.
-  /// - [apiKey]: Optional API key for Etherscan service.
+  /// - [apiKey]: API key for Moralis service.
   PaymentMonitorController({
     required this.amountRequested,
     required this.startBlock,
     required this.receivingAddress,
-    required EtherscanService etherscanService,
+    required MoralisService moralisService,
     required ChainConfig chainConfig,
     this.apiKey,
-  }) : _etherscanService = etherscanService,
+  }) : _moralisService = moralisService,
        _chainConfig = chainConfig {
     _nextFromBlock = startBlock;
   }
 
-  void startMonitoring() {
-    debugPrint('PaymentMonitor started. Monitoring for $amountRequested');
-    stopMonitoring();
-
-    void schedule() {
-      final jitterMs = 250 + Random().nextInt(500); // 250–750 ms
-      _pollingTimer = Timer(
-        Duration(seconds: 4) + Duration(milliseconds: jitterMs),
-        () async {
-          await _checkPaymentStatus();
-          if (!_disposed && _status != PaymentStatus.completed) {
-            schedule();
-          }
-        },
-      );
-    }
-
-    // Start timer-based polling without immediate check
-    // (newly generated QR codes won't have transactions yet)
-    schedule();
+  /// Manually checks for new payments.
+  ///
+  /// Call this method on "Pull-to-Refresh" or initial load.
+  Future<void> refresh() async {
+    debugPrint('PaymentMonitor refreshing...');
+    await _checkPaymentStatus();
   }
 
+  /// Starts polling for payment status.
+  ///
+  /// Polls every 15 seconds to respect Moralis Free Tier limits.
+  void startMonitoring() {
+    stopMonitoring();
+    debugPrint('PaymentMonitor started polling.');
+
+    // Initial check
+    _checkPaymentStatus();
+
+    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _checkPaymentStatus();
+    });
+  }
+
+  /// Stops the polling timer.
   void stopMonitoring() {
-    debugPrint('PaymentMonitor stopping.');
     _pollingTimer?.cancel();
     _pollingTimer = null;
+    debugPrint('PaymentMonitor stopped polling.');
   }
 
-  /// Checks payment status by querying the blockchain.
+  /// Checks payment status by querying the blockchain via Moralis.
   ///
   /// This method uses a moving block cursor to fetch only new transactions
-  /// since the last check, avoiding re-downloading historical data.
-  ///
-  /// Updates controller state with results and notifies listeners.
+  /// since the last check.
   Future<void> _checkPaymentStatus() async {
     if (_disposed || _inFlight) return; // No overlap
+
+    if (apiKey == null || apiKey!.isEmpty) {
+      _errorMessage = "API Key missing. Cannot check payments.";
+      _status = PaymentStatus.error;
+      notifyListeners();
+      return;
+    }
+
     _inFlight = true;
+    // Only show loading indicator on first load or manual refresh, not every poll?
+    // Actually, for polling, we might not want to flicker the UI with loading state every 15s.
+    // But let's keep it simple for now.
+    // _isLoading = true;
+    // notifyListeners();
 
     try {
-      final rawTransactions = await _etherscanService.getTokenTxFromBlock(
+      final newTransactions = await _moralisService.getTokenTransactions(
         address: receivingAddress,
         contractAddress: _chainConfig.tokenAddress,
-        startBlock: _nextFromBlock, // Only fetch new items
-        offset: 200, // Smaller page size for monitoring
-        maxPages: 3, // Cap bursts
-        perPagePause: const Duration(milliseconds: 300),
-        apiKey: apiKey,
+        startBlock: _nextFromBlock,
+        limit: 50, // Conservative limit
+        apiKey: apiKey!,
       );
 
       if (_disposed) return;
 
-      // Parse as before
-      final parsedTransactions = <ReceivedTransaction>[];
-      for (final raw in rawTransactions) {
-        try {
-          parsedTransactions.add(ReceivedTransaction.fromJson(raw));
-        } catch (e) {
-          debugPrint('Error parsing transaction ${raw['hash']}: $e');
-        }
-      }
-
-      // Filter inbound to the receiving address
-      final inboundTransactions = parsedTransactions
+      // Filter inbound to the receiving address (Moralis returns all transfers for address)
+      final inboundTransactions = newTransactions
           .where((tx) => tx.to.toLowerCase() == receivingAddress.toLowerCase())
           .toList();
 
@@ -137,26 +140,24 @@ class PaymentMonitorController extends ChangeNotifier {
       );
 
       // Advance the cursor to the highest seen block + 1
-      if (rawTransactions.isNotEmpty) {
-        final maxBlock = rawTransactions
-            .map((m) => int.parse(m['blockNumber'] as String))
+      if (newTransactions.isNotEmpty) {
+        final maxBlock = newTransactions
+            .map((t) => t.blockNumber)
             .fold<int>(_nextFromBlock, (a, b) => a > b ? a : b);
         _nextFromBlock = maxBlock + 1;
       }
 
-      _isLoading = false;
       _errorMessage = null;
-      _amountReceived = (_amountReceived + totalReceived);
-      _receivedTransactions.addAll(inboundTransactions);
+      if (totalReceived > 0) {
+        _amountReceived = (_amountReceived + totalReceived);
+        _receivedTransactions.addAll(inboundTransactions);
+      }
 
-      // De‑duplicate if needed (optional)
-      // _receivedTransactions = {for (var t in _receivedTransactions) t.hash: t}.values.toList();
-
-      // Status
+      // Status Update
       if (_amountReceived >= amountRequested) {
         _status = PaymentStatus.completed;
         debugPrint('✅ Payment COMPLETED. Received $_amountReceived');
-        stopMonitoring();
+        stopMonitoring(); // Stop polling on completion
       } else if (_amountReceived > 0) {
         _status = PaymentStatus.partiallyPaid;
         debugPrint(
@@ -166,36 +167,24 @@ class PaymentMonitorController extends ChangeNotifier {
         _status = PaymentStatus.monitoring;
       }
     } catch (e) {
-      final errorText = e.toString().toLowerCase();
-      final isThrottleError =
-          errorText.contains('temporarily unavailable') ||
-          errorText.contains('rate limit') ||
-          errorText.contains('too many requests');
-
-      if (isThrottleError) {
-        // Throttle errors are transparent to user - retry will handle it
-        debugPrint('⏱️ API throttled, will retry on next poll: $e');
-        _isLoading = false;
-        // Keep current status (monitoring/partiallyPaid), don't show error
-      } else {
-        // Real errors are shown to the user
-        debugPrint('❌ Error checking payment: $e');
-        _errorMessage = e.toString();
-        _status = PaymentStatus.error;
-      }
+      debugPrint('❌ Error checking payment: $e');
+      _errorMessage = e.toString();
+      // Don't change status to error immediately if it's just a network blip?
+      // But for manual refresh, showing error is good.
+      // _status = PaymentStatus.error;
     } finally {
       _inFlight = false;
-    }
-
-    if (!_disposed) {
-      notifyListeners();
+      _isLoading = false;
+      if (!_disposed) {
+        notifyListeners();
+      }
     }
   }
 
   @override
   void dispose() {
-    _disposed = true;
     stopMonitoring();
+    _disposed = true;
     super.dispose();
   }
 }

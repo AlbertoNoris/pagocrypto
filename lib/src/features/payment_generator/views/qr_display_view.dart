@@ -4,7 +4,7 @@ import 'package:pagocrypto/src/core/theme/app_theme.dart';
 import 'package:pagocrypto/src/core/widgets/max_width_container.dart';
 import 'package:provider/provider.dart';
 import 'package:pagocrypto/src/core/config/chain_config.dart';
-import 'package:pagocrypto/src/core/services/etherscan_service.dart';
+import 'package:pagocrypto/src/core/services/moralis_service.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_monitor_controller.dart';
 
@@ -39,8 +39,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
 
   /// Initializes the monitoring controller and starts monitoring.
   ///
-  /// Uses block-cursor anchoring: monitors from the startBlock forward
-  /// instead of using timestamp filtering.
+  /// Uses block-cursor anchoring: monitors from the startBlock forward.
   void _initializeMonitoring(PaymentGeneratorController generator) {
     if (_monitoringInitialized) return;
 
@@ -49,9 +48,6 @@ class _QrDisplayViewState extends State<QrDisplayView> {
         generator.qrStartBlock == null ||
         generator.receivingAddress == null) {
       debugPrint('Cannot initialize monitoring: missing required data');
-      debugPrint('  finalAmount: ${generator.finalAmount}');
-      debugPrint('  qrStartBlock: ${generator.qrStartBlock}');
-      debugPrint('  receivingAddress: ${generator.receivingAddress}');
       return;
     }
 
@@ -60,14 +56,21 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       amountRequested: generator.finalAmount!,
       startBlock: generator.qrStartBlock!,
       receivingAddress: generator.receivingAddress!,
-      etherscanService: context.read<EtherscanService>(),
+      moralisService: context.read<MoralisService>(),
       chainConfig: context.read<ChainConfig>(),
       apiKey: generator.apiKey,
     );
 
     // Listen to monitor status changes to rebuild UI when payment completes
     _monitorController.addListener(_handleMonitorStatusChanges);
-    _monitorController.startMonitoring();
+
+    // Initial check and start polling
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _monitorController.startMonitoring();
+      }
+    });
+
     _monitoringInitialized = true;
   }
 
@@ -91,9 +94,6 @@ class _QrDisplayViewState extends State<QrDisplayView> {
   }
 
   /// Handles status changes from the monitor controller
-  ///
-  /// Triggers a rebuild when payment status changes (e.g., to hide QR code
-  /// when payment is completed).
   void _handleMonitorStatusChanges() {
     if (mounted) {
       setState(() {
@@ -155,42 +155,50 @@ class _QrDisplayViewState extends State<QrDisplayView> {
             // Initialize monitoring on first render when URL is available
             _initializeMonitoring(generatorController);
 
-            return SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // QR Code Card - hidden when payment is completed
-                    if (!(_monitoringInitialized &&
-                        _monitorController.status == PaymentStatus.completed))
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: AppTheme.surfaceColor,
+            return RefreshIndicator(
+              onRefresh: () async {
+                if (_monitoringInitialized) {
+                  await _monitorController.refresh();
+                }
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // QR Code Card - hidden when payment is completed
+                      if (!(_monitoringInitialized &&
+                          _monitorController.status == PaymentStatus.completed))
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: AppTheme.surfaceColor,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(10.0),
+                            child: _buildQrCodeWidget(generatorController),
+                          ),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(10.0),
-                          child: _buildQrCodeWidget(generatorController),
-                        ),
-                      ),
-                    if (!(_monitoringInitialized &&
-                        _monitorController.status == PaymentStatus.completed))
+                      if (!(_monitoringInitialized &&
+                          _monitorController.status == PaymentStatus.completed))
+                        const SizedBox(height: 24),
+
+                      // Final Amount Display
+                      _buildFinalAmountDisplay(generatorController),
                       const SizedBox(height: 24),
 
-                    // Final Amount Display
-                    _buildFinalAmountDisplay(generatorController),
-                    const SizedBox(height: 24),
-
-                    // Payment Monitoring Section
-                    if (_monitoringInitialized)
-                      ChangeNotifierProvider.value(
-                        value: _monitorController,
-                        child: _buildMonitoringSection(),
-                      )
-                    else
-                      const SizedBox(height: 32),
-                  ],
+                      // Payment Monitoring Section
+                      if (_monitoringInitialized)
+                        ChangeNotifierProvider.value(
+                          value: _monitorController,
+                          child: _buildMonitoringSection(),
+                        )
+                      else
+                        const SizedBox(height: 32),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -236,8 +244,8 @@ class _QrDisplayViewState extends State<QrDisplayView> {
         statusIcon = Icons.check_circle;
         break;
       case PaymentStatus.error:
-        statusText = '';
-        statusIcon = Icons.hourglass_empty;
+        statusText = 'Errore di connessione';
+        statusIcon = Icons.error_outline;
         break;
     }
 
@@ -264,6 +272,14 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                 ),
               ],
             ),
+            if (controller.errorMessage != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                controller.errorMessage!,
+                style: style.bodySmall?.copyWith(color: Colors.white70),
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: 24),
             Text.rich(
               TextSpan(
@@ -293,6 +309,14 @@ class _QrDisplayViewState extends State<QrDisplayView> {
               style: style.bodyMedium?.copyWith(color: Colors.white),
               textAlign: TextAlign.center,
             ),
+            if (controller.isLoading) ...[
+              const SizedBox(height: 16),
+              const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ],
           ],
         ),
       ),

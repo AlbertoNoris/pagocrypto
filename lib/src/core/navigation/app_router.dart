@@ -1,7 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:pagocrypto/src/core/config/chain_config.dart';
-import 'package:pagocrypto/src/core/services/etherscan_service.dart';
+import 'package:pagocrypto/src/core/services/moralis_service.dart';
 import 'package:pagocrypto/src/core/services/qr_proxy_service.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/passcode_controller.dart';
@@ -13,12 +13,10 @@ import 'package:pagocrypto/src/features/payment_generator/views/passcode_view.da
 /// Defines the application's routes using GoRouter.
 ///
 /// This router uses a ShellRoute to provide a shared PaymentGeneratorController
-/// along with EtherscanService, ChainConfig, and QrProxyService to all child routes,
-/// enabling block-cursor anchoring for payment monitoring.
+/// along with MoralisService, ChainConfig, and QrProxyService to all child routes.
 class AppRouter {
   /// Chain configuration for BSC (Binance Smart Chain).
-  /// Proxy URL and token address are configured here.
-  /// The API key is kept secure on the Vercel proxy server.
+  /// Proxy URL is legacy/unused for Moralis but kept for config compatibility.
   static final _chainConfig = ChainConfig.bsc(
     proxyUrl: 'https://pagocrypto.vercel.app/api/bscscan-proxy',
     tokenAddress: '0x9d1A7A3191102e9F900Faa10540837ba84dCBAE7',
@@ -32,32 +30,29 @@ class AppRouter {
     initialLocation: '/',
     routes: [
       // Use a ShellRoute to provide shared dependencies and controller
-      // to all child routes. This ensures HomeView, SettingsView, and QrDisplayView
-      // use the SAME PaymentGeneratorController instance.
+      // to all child routes.
       ShellRoute(
         builder: (context, state, child) {
-          // Provide ChainConfig, EtherscanService, QrProxyService, and PaymentGeneratorController
-          // at this level so they're shared across all routes
+          // Provide ChainConfig, MoralisService, QrProxyService, and PaymentGeneratorController
           return MultiProvider(
             providers: [
               Provider<ChainConfig>(create: (_) => _chainConfig),
-              Provider<EtherscanService>(
+              Provider<MoralisService>(
                 create: (context) =>
-                    EtherscanService(config: context.read<ChainConfig>()),
+                    MoralisService(config: context.read<ChainConfig>()),
               ),
               Provider<QrProxyService>(
                 create: (_) => QrProxyService(_qrProxyEndpoint),
               ),
               ChangeNotifierProvider(
                 create: (context) => PaymentGeneratorController(
-                  etherscanService: context.read<EtherscanService>(),
+                  moralisService: context.read<MoralisService>(),
                   chainConfig: context.read<ChainConfig>(),
                   qrProxyService: context.read<QrProxyService>(),
                 ),
               ),
             ],
-            child:
-                child, // The child will be either HomeView, SettingsView, or QrDisplayView
+            child: child,
           );
         },
         routes: [

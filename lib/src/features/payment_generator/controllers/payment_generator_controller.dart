@@ -3,24 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pagocrypto/src/core/config/chain_config.dart';
-import 'package:pagocrypto/src/core/services/etherscan_service.dart';
+import 'package:pagocrypto/src/core/services/moralis_service.dart';
 import 'package:pagocrypto/src/core/services/qr_proxy_service.dart';
 import 'package:pagocrypto/src/core/utils/amount_utils.dart';
 
 /// Controller to manage payment QR code generation state and logic.
 ///
-/// This controller adheres to the State-Driven UI pattern:
-/// 1. It extends ChangeNotifier.
-/// 2. State variables are private (`_variable`).
-/// 3. State is exposed via public getters (`get variable`).
-/// 4. notifyListeners() is called after state modification.
+/// This controller adheres to the State-Driven UI pattern.
 ///
-/// It integrates with EtherscanService to fetch the current block number at
-/// the time of QR generation, enabling block-cursor anchoring for deterministic
-/// payment monitoring.
+/// UPDATED: Uses MoralisService for block fetching.
 class PaymentGeneratorController extends ChangeNotifier {
   // --- Dependencies ---
-  final EtherscanService _etherscanService;
+  final MoralisService _moralisService;
   final ChainConfig _chainConfig;
   final QrProxyService _qrProxyService;
 
@@ -49,7 +43,7 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// The device ID for identification (optional).
   String? _deviceId;
 
-  /// The API key for Etherscan service (optional).
+  /// The API key for Moralis service (optional).
   String? _apiKey;
 
   /// The final generated URL for the QR code.
@@ -107,7 +101,7 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// The device ID for identification.
   String? get deviceId => _deviceId;
 
-  /// The API key for Etherscan service.
+  /// The API key for Moralis service.
   String? get apiKey => _apiKey;
 
   /// The generated payment URL. Null if no URL is generated.
@@ -153,13 +147,13 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// Whether the block number is ready for use (fetched and available).
   bool get isBlockReady => _qrStartBlock != null && !_isBlockFetching;
 
-  /// Constructor. Accepts EtherscanService, ChainConfig, and QrProxyService dependencies.
+  /// Constructor. Accepts MoralisService, ChainConfig, and QrProxyService dependencies.
   /// Immediately starts loading settings.
   PaymentGeneratorController({
-    required EtherscanService etherscanService,
+    required MoralisService moralisService,
     required ChainConfig chainConfig,
     required QrProxyService qrProxyService,
-  }) : _etherscanService = etherscanService,
+  }) : _moralisService = moralisService,
        _chainConfig = chainConfig,
        _qrProxyService = qrProxyService {
     loadSettings();
@@ -178,8 +172,11 @@ class PaymentGeneratorController extends ChangeNotifier {
       _amountMultiplier = prefs.getDouble(_kMultiplierKey);
       _deviceId = prefs.getString(_kDeviceIdKey);
       _apiKey = prefs.getString(_kApiKeyKey);
+      if (_apiKey == null || _apiKey!.isEmpty) {
+        _apiKey =
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjAyOTQwNmNkLTczMzQtNDY2Ni05NjBjLTViOGNhZjgzNDJjZSIsIm9yZ0lkIjoiNDg0NDI5IiwidXNlcklkIjoiNDk4MzkwIiwidHlwZUlkIjoiZDc2ZjlhZTYtODY4Yi00MDY5LThmNWUtZmJkYjhiNGQ3YmMxIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NjQ3ODAwNzMsImV4cCI6NDkyMDU0MDA3M30.wHlylOMJUgfSRwEOBM7b7efhgnw4MqyofRXCD4qjYGY';
+      }
     } catch (e) {
-      // In a real app, you might want more robust error handling
       debugPrint("Error loading settings: $e");
       _errorMessage = "Could not load saved settings.";
     }
@@ -188,24 +185,25 @@ class PaymentGeneratorController extends ChangeNotifier {
     notifyListeners();
 
     // Start fetching block number in background for first QR generation
-    startBlockFetching();
+    // Only if API key is present, as Moralis requires it
+    if (_apiKey != null && _apiKey!.isNotEmpty) {
+      startBlockFetching();
+    }
   }
 
   /// Starts fetching the current block number in the background.
-  ///
-  /// This method is called automatically when the controller is created and
-  /// when a payment is cleared to prepare for the next payment. It fetches
-  /// the block number asynchronously without blocking the UI.
-  ///
-  /// If the fetch fails, the error is logged but does not show to the user
-  /// unless they try to generate a QR code.
   Future<void> startBlockFetching() async {
+    if (_apiKey == null || _apiKey!.isEmpty) {
+      debugPrint('Skipping block fetch: No API Key');
+      return;
+    }
+
     _isBlockFetching = true;
     _qrStartBlock = null;
     notifyListeners();
 
     try {
-      _qrStartBlock = await _etherscanService.getCurrentBlock(apiKey: _apiKey);
+      _qrStartBlock = await _moralisService.getCurrentBlock(apiKey: _apiKey);
       debugPrint('Background block fetch completed: $_qrStartBlock');
     } catch (e) {
       debugPrint('Background block fetch failed: $e');
@@ -259,6 +257,11 @@ class PaymentGeneratorController extends ChangeNotifier {
       _amountMultiplier = multiplier;
       _deviceId = deviceId;
       _apiKey = apiKey;
+
+      // Trigger block fetch if we just saved a key
+      if (apiKey != null && apiKey.isNotEmpty) {
+        startBlockFetching();
+      }
     } catch (e) {
       debugPrint("Error saving settings: $e");
       _errorMessage = "Could not save settings.";
@@ -279,19 +282,12 @@ class PaymentGeneratorController extends ChangeNotifier {
     }
 
     // Calculate amount_to_request with floor rounding to 2 decimal places
-    // Example: 14.61 * 1.03 = 15.0483 → 15.04
     final double rawAmount = amount * _amountMultiplier!;
     final double amountToRequest = floorToTwoDecimals(rawAmount);
     return amountToRequest;
   }
 
   /// Generates the payment URL based on the user's input amount.
-  ///
-  /// This method uses the pre-fetched block number for block-cursor anchoring.
-  /// If the block is still being fetched in the background, it waits for the
-  /// fetch to complete before proceeding.
-  ///
-  /// Returns with an error message if the block fetch failed or is unavailable.
   Future<void> generateUrl({required String importo}) async {
     // Set loading state
     _isGeneratingQr = true;
@@ -316,6 +312,13 @@ class PaymentGeneratorController extends ChangeNotifier {
       return;
     }
 
+    if (_apiKey == null || _apiKey!.isEmpty) {
+      _errorMessage = "API Key mancante. Configura le impostazioni.";
+      _isGeneratingQr = false;
+      notifyListeners();
+      return;
+    }
+
     // Parse the amount from comma-separated format (e.g., "1,89" -> 1.89)
     final String normalizedImporto = importo.replaceAll(',', '.');
     final double? amount = double.tryParse(normalizedImporto);
@@ -335,6 +338,16 @@ class PaymentGeneratorController extends ChangeNotifier {
       }
     }
 
+    // If block is still null (fetch failed or never started), try one last time
+    if (_qrStartBlock == null) {
+      debugPrint('Block not ready, trying immediate fetch...');
+      try {
+        _qrStartBlock = await _moralisService.getCurrentBlock(apiKey: _apiKey);
+      } catch (e) {
+        debugPrint('Immediate block fetch failed: $e');
+      }
+    }
+
     // --- Verify block was fetched successfully ---
     if (_qrStartBlock == null) {
       debugPrint('Block fetch failed or not available');
@@ -349,19 +362,15 @@ class PaymentGeneratorController extends ChangeNotifier {
     // --- Logic from PDF ---
 
     // 1. Calculate amount_to_request with floor rounding to 2 decimal places
-    // Example: 14.61 * 1.03 = 15.0483 → 15.04
     final double rawAmount = amount * _amountMultiplier!;
     final double amountToRequest = floorToTwoDecimals(rawAmount);
 
     // 2. Convert to uint256 (wei)
-    // We must use BigInt to avoid precision loss.
-    // 15.04 * 10^18 is the same as 1504 * 10^16
     final BigInt amountInCents = BigInt.from((amountToRequest * 100).round());
     final BigInt multiplierWei = BigInt.parse('10000000000000000'); // 10^16
     final BigInt amountUint256 = amountInCents * multiplierWei;
 
     // 3. Format the QR code content (the "final URL")
-    // Use chain config for token address and chain ID
     _generatedUrl =
         'ethereum:${_chainConfig.tokenAddress}@${_chainConfig.chainId}/transfer?address=$_receivingAddress&uint256=${amountUint256.toString()}';
 
@@ -386,9 +395,6 @@ class PaymentGeneratorController extends ChangeNotifier {
   }
 
   /// Clears the generated URL and error state to return to the input screen.
-  ///
-  /// This also resets the block reference and starts a new background fetch
-  /// to prepare for the next payment generation.
   void clearGeneratedUrl() {
     _generatedUrl = null;
     _bscScanUrl = null;
@@ -401,11 +407,12 @@ class PaymentGeneratorController extends ChangeNotifier {
     notifyListeners();
 
     // Start fetching a new block for the next payment
-    startBlockFetching();
+    if (_apiKey != null && _apiKey!.isNotEmpty) {
+      startBlockFetching();
+    }
   }
 
   /// Updates the input amount and triggers a rebuild.
-  /// This allows the view to reactively display the final amount.
   void updateInputAmount(String amount) {
     _inputAmount = amount;
     notifyListeners();
@@ -414,7 +421,6 @@ class PaymentGeneratorController extends ChangeNotifier {
   /// Resets the navigation event flag after the view has handled it.
   void onNavigatedToQr() {
     _navigateToQr = false;
-    // No notifyListeners() here, as per the one-time-event pattern
   }
 
   /// Copies the monitoring URL to clipboard and sets a feedback message.
@@ -432,14 +438,8 @@ class PaymentGeneratorController extends ChangeNotifier {
   }
 
   /// Generates a QR code using the QR proxy service.
-  ///
-  /// Sends the payment URL to the Vercel proxy endpoint, which applies
-  /// server-side styling defaults (blue/white theme with circle markers and logo).
-  /// The generated QR code image bytes are downloaded and stored in _qrCodeImageBytes.
   Future<void> generateQrCodeFromApi(String paymentUrl) async {
     try {
-      // Call proxy with only the data field
-      // Server will apply default styling configuration
       _qrJpgUrl = await _qrProxyService.create(data: paymentUrl);
       _navigateToQr = true;
     } catch (e) {
