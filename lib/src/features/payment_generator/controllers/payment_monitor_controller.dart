@@ -76,7 +76,16 @@ class PaymentMonitorController extends ChangeNotifier {
 
   /// Starts polling for payment status.
   ///
-  /// Polls every 15 seconds to respect Moralis Free Tier limits.
+  /// **Moralis API & Compute Units (Free Plan):**
+  /// The Moralis Free Plan provides a daily quota of **40,000 Compute Units (CU)**.
+  /// API consumption is calculated based on the complexity of requests.
+  /// Specifically, the `getTokenTransfers` endpoint used here costs **50 CU** per call.
+  ///
+  /// **Conclusion (1-second interval):**
+  /// With checks performed every **1 second**, the system consumes **50 CU/second**.
+  /// - Total capacity: **800 checks per day** (40,000 / 50).
+  /// - Max monitoring time: **~13 minutes per day**.
+  /// This aggressive polling is sustainable only for very brief usage periods on the free plan.
   void startMonitoring() {
     stopMonitoring();
     debugPrint('PaymentMonitor started polling.');
@@ -84,7 +93,7 @@ class PaymentMonitorController extends ChangeNotifier {
     // Initial check
     _checkPaymentStatus();
 
-    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _checkPaymentStatus();
     });
   }
