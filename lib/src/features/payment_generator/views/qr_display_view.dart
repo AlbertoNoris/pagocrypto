@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pagocrypto/src/core/theme/app_theme.dart';
@@ -123,13 +124,13 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       child: PrettyQrView.data(
         data: controller.generatedUrl!,
         errorCorrectLevel: QrErrorCorrectLevel.H,
-        decoration: PrettyQrDecoration(
-          image: const PrettyQrDecorationImage(
+        decoration: const PrettyQrDecoration(
+          image: PrettyQrDecorationImage(
             image: AssetImage('assets/icon3-nobg.png'),
           ),
           shape: CustomQrShape(
             color: Colors.white,
-            backgroundColor: const Color(0xFF1F4B99),
+            backgroundColor: Color(0xFF1F4B99),
           ),
         ),
       ),
@@ -400,10 +401,8 @@ class _QrDisplayViewState extends State<QrDisplayView> {
 class CustomQrShape extends PrettyQrShape {
   final Color color;
   final Color backgroundColor;
-  final PrettyQrSmoothSymbol _smoothSymbol;
 
-  CustomQrShape({required this.color, required this.backgroundColor})
-    : _smoothSymbol = PrettyQrSmoothSymbol(color: color, roundFactor: 1.0);
+  const CustomQrShape({required this.color, required this.backgroundColor});
 
   @override
   void paint(PrettyQrPaintingContext context) {
@@ -414,19 +413,51 @@ class CustomQrShape extends PrettyQrShape {
       exclude: {PrettyQrComponentType.finderPattern},
     );
 
-    final maskedContext = context.copyWith(matrix: maskedMatrix);
-    _smoothSymbol.paint(maskedContext);
+    final moduleSize = context.estimatedBounds.width / context.matrix.dimension;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    // Diamond side length to fit in the cell when rotated 45 degrees
+    // side = width / sqrt(2)
+    final diamondSide = moduleSize / sqrt(2);
+    final rectSize = Size(diamondSide, diamondSide);
+
+    var index = 0;
+    for (final module in maskedMatrix) {
+      final x = index % maskedMatrix.dimension;
+      final y = index ~/ maskedMatrix.dimension;
+      index++;
+
+      if (module.isDark) {
+        final center = Offset((x + 0.5) * moduleSize, (y + 0.5) * moduleSize);
+
+        context.canvas.save();
+        context.canvas.translate(center.dx, center.dy);
+        context.canvas.rotate(pi / 4); // Rotate 45 degrees
+
+        final rRect = RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: rectSize.width,
+            height: rectSize.height,
+          ),
+          Radius.circular(moduleSize * 0.2), // Adjust roundness as needed
+        );
+
+        context.canvas.drawRRect(rRect, paint);
+        context.canvas.restore();
+      }
+    }
 
     // 2. Paint finder patterns as circles
     final brush = PrettyQrBrush.from(color);
-    final paint = brush.toPaint(
+    final finderPaint = brush.toPaint(
       context.estimatedBounds,
       textDirection: context.textDirection,
     );
 
     final backgroundPaint = Paint()..color = backgroundColor;
-
-    final moduleSize = context.estimatedBounds.width / context.matrix.dimension;
 
     for (final pattern in context.matrix.positionDetectionPatterns) {
       // Pattern is 7x7 modules
@@ -437,13 +468,23 @@ class CustomQrShape extends PrettyQrShape {
       final center = Offset(x + size / 2, y + size / 2);
 
       // Outer circle (7 modules diameter) - Foreground
-      context.canvas.drawCircle(center, size / 2, paint);
+      context.canvas.drawCircle(center, size / 2, finderPaint);
 
       // Middle circle (5 modules diameter) - Background
       context.canvas.drawCircle(center, (5 * moduleSize) / 2, backgroundPaint);
 
-      // Inner circle (3 modules diameter) - Foreground
-      context.canvas.drawCircle(center, (3 * moduleSize) / 2, paint);
+      // Inner rounded square (3 modules size) - Foreground
+      final innerSize = 3 * moduleSize;
+      final innerRect = Rect.fromCenter(
+        center: center,
+        width: innerSize,
+        height: innerSize,
+      );
+      final innerRRect = RRect.fromRectAndRadius(
+        innerRect,
+        Radius.circular(moduleSize * 0.9),
+      );
+      context.canvas.drawRRect(innerRRect, finderPaint);
     }
   }
 
