@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:pagocrypto/src/core/widgets/max_width_container.dart';
 import 'package:pagocrypto/src/features/payment_generator/controllers/payment_generator_controller.dart';
@@ -86,73 +87,92 @@ class _SettingsViewState extends State<SettingsView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-            TextField(
-              controller: _addressController,
-              decoration: const InputDecoration(
-                labelText: 'Receiving Address (0x...)',
+              TextField(
+                controller: _addressController,
+                decoration: const InputDecoration(
+                  labelText: 'Receiving Address (0x...)',
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _multiplierController,
-              decoration: const InputDecoration(
-                labelText: 'Amount Multiplier (e.g., 1,03)',
+              const SizedBox(height: 16),
+              TextField(
+                controller: _multiplierController,
+                decoration: const InputDecoration(
+                  labelText: 'Amount Multiplier (e.g., 1,03)',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                  TextInputFormatter.withFunction((oldValue, newValue) {
+                    // Normalize to use commas for display
+                    return newValue.copyWith(
+                      text: newValue.text.replaceAll('.', ','),
+                    );
+                  }),
+                ],
               ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+              const SizedBox(height: 16),
+              TextField(
+                controller: _deviceIdController,
+                decoration: const InputDecoration(
+                  labelText: 'Device ID (opzionale)',
+                ),
               ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                TextInputFormatter.withFunction((oldValue, newValue) {
-                  // Normalize to use commas for display
-                  return newValue.copyWith(
-                    text: newValue.text.replaceAll('.', ','),
-                  );
-                }),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _deviceIdController,
-              decoration: const InputDecoration(
-                labelText: 'Device ID (opzionale)',
+              const SizedBox(height: 16),
+              TextField(
+                controller: _apiKeyController,
+                decoration: const InputDecoration(
+                  labelText: 'API Key (opzionale)',
+                ),
+                obscureText: true,
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _apiKeyController,
-              decoration: const InputDecoration(
-                labelText: 'API Key (opzionale)',
-              ),
-              obscureText: true,
-            ),
-            const SizedBox(height: 24),
-            // Listen for and display errors
-            Consumer<PaymentGeneratorController>(
-              builder: (context, controller, child) {
-                if (controller.errorMessage != null) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        controller.errorMessage!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                          fontWeight: FontWeight.w500,
+              const SizedBox(height: 24),
+              // Listen for and display errors
+              Consumer<PaymentGeneratorController>(
+                builder: (context, controller, child) {
+                  if (controller.errorMessage != null) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.error.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          controller.errorMessage!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-            ElevatedButton(onPressed: _save, child: const Text('Save')),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+              ElevatedButton(onPressed: _save, child: const Text('Save')),
+              const SizedBox(height: 32),
+              FutureBuilder<PackageInfo>(
+                future: PackageInfo.fromPlatform(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    final packageInfo = snapshot.data!;
+                    return Text(
+                      'Version: ${packageInfo.version}+${packageInfo.buildNumber}',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
             ],
           ),
         ),

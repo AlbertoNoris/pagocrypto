@@ -19,6 +19,7 @@ dependencies:
   google_fonts: ^6.3.2
   flutter_launcher_icons: ^0.14.4
   pretty_qr_code: ^3.5.0
+  package_info_plus: ^9.0.0
 
 dev_dependencies:
   flutter_test:

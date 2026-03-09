@@ -300,7 +300,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
                 children: [
                   TextSpan(
                     text:
-                        '${controller.amountLeft.toStringAsFixed(2).replaceAll('.', ',')} EURI',
+                        '${controller.amountLeft.toStringAsFixed(2).replaceAll('.', ',')} USDT (BSC)',
                     style: style.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -312,12 +312,12 @@ class _QrDisplayViewState extends State<QrDisplayView> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Totale previsto: ${controller.amountRequested.toStringAsFixed(2).replaceAll('.', ',')} EURI',
+              'Totale previsto: ${controller.amountRequested.toStringAsFixed(2).replaceAll('.', ',')} USDT (BSC)',
               style: style.bodyMedium?.copyWith(color: Colors.white),
               textAlign: TextAlign.center,
             ),
             Text(
-              'Incassato: ${controller.amountReceived.toStringAsFixed(2).replaceAll('.', ',')} EURI',
+              'Incassato: ${controller.amountReceived.toStringAsFixed(2).replaceAll('.', ',')} USDT (BSC)',
               style: style.bodyMedium?.copyWith(color: Colors.white),
               textAlign: TextAlign.center,
             ),
@@ -352,7 +352,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
             final tx = controller.receivedTransactions[index];
             return ListTile(
               title: Text(
-                '${tx.amount.toStringAsFixed(2).replaceAll('.', ',')} EURI',
+                '${tx.amount.toStringAsFixed(2).replaceAll('.', ',')} USDT (BSC)',
               ),
               subtitle: Text(
                 'From: ${tx.from}',
@@ -385,7 +385,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
           ),
           const SizedBox(height: 8),
           Text(
-            '${controller.finalAmountFormatted} €',
+            '${controller.finalAmountFormatted} \$',
             style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,

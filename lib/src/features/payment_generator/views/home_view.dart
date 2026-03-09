@@ -142,7 +142,7 @@ class _HomeViewState extends State<HomeView> {
                             },
                             decoration: InputDecoration(
                               hintText: 'e.g., 18,90',
-                              suffixText: '€',
+                              suffixText: '\$',
                               hintStyle: const TextStyle(fontSize: 18),
                             ),
                             keyboardType: TextInputType.number,
