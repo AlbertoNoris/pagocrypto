@@ -23,6 +23,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
   late PaymentGeneratorController _generatorController;
   late PaymentMonitorController _monitorController;
   bool _monitoringInitialized = false;
+  bool _showBackupQr = false;
 
   @override
   void initState() {
@@ -109,29 +110,56 @@ class _QrDisplayViewState extends State<QrDisplayView> {
   /// Builds the QR code widget using the simplified StyledQr widget
   Widget _buildQrCodeWidget(PaymentGeneratorController controller) {
     // Show loading indicator while URL is being generated
-    if (controller.generatedUrl == null) {
+    if (controller.generatedUrl == null ||
+        controller.receivingAddress == null) {
       return const SizedBox(
         height: 300.0,
         child: Center(child: CircularProgressIndicator()),
       );
     }
 
-    // Display the QR code using the PrettyQrView widget
-    // Display the QR code using the PrettyQrView widget
-    return Container(
-      padding: const EdgeInsets.all(16.0),
+    final qrData = _showBackupQr
+        ? controller.receivingAddress!
+        : controller.generatedUrl!;
 
-      child: PrettyQrView.data(
-        data: controller.generatedUrl!,
-        errorCorrectLevel: QrErrorCorrectLevel.H,
-        decoration: const PrettyQrDecoration(
-          image: PrettyQrDecorationImage(
-            image: AssetImage('assets/icon3-nobg.png'),
-          ),
-          shape: CustomQrShape(
-            color: Colors.white,
-            backgroundColor: Color(0xFF1F4B99),
-          ),
+    // Display the QR code using the PrettyQrView widget
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _showBackupQr = !_showBackupQr;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16.0),
+        color: Colors.transparent, // Ensures the entire container is tappable
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PrettyQrView.data(
+              data: qrData,
+              errorCorrectLevel: QrErrorCorrectLevel.H,
+              decoration: const PrettyQrDecoration(
+                image: PrettyQrDecorationImage(
+                  image: AssetImage('assets/qrc_center3.png'),
+                ),
+                shape: CustomQrShape(
+                  color: Colors.white,
+                  backgroundColor: Color(0xFF1F4B99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                _showBackupQr
+                    ? 'Mostrando indirizzo di ricezione (Backup QR)'
+                    : 'QR non compatibile? Clicca l’immagine per generarne uno di riserva.',
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+                textAlign: TextAlign.right,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -376,7 +404,7 @@ class _QrDisplayViewState extends State<QrDisplayView> {
       child: Column(
         children: [
           Text(
-            'Emesso scontrino per',
+            'Emesso scontrino in EUR, di cui controvalore',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.9),
               fontSize: 14,

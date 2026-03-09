@@ -19,7 +19,7 @@ class AppRouter {
   /// Proxy URL is legacy/unused for Moralis but kept for config compatibility.
   static final _chainConfig = ChainConfig.bsc(
     proxyUrl: 'https://pagocrypto.vercel.app/api/bscscan-proxy',
-    tokenAddress: '0x9d1A7A3191102e9F900Faa10540837ba84dCBAE7',
+    tokenAddress: '0x55d398326f99059fF775485246999027B3197955',
   );
 
   /// QR Proxy service endpoint (Vercel serverless function).
